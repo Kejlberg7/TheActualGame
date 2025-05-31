@@ -85,4 +85,8 @@ public class PlayerManager {
         player.y = GameConstants.PLAYER_INITIAL_Y;
         bullets.clear();
     }
+
+    public Array<Rectangle> getBullets() {
+        return bullets;
+    }
 }
