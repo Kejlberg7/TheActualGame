@@ -20,6 +20,8 @@ import io.github.the_actual_game.entities.GateManager;
 import io.github.the_actual_game.entities.PlayerManager;
 import io.github.the_actual_game.constants.GameConstants;
 
+import java.util.List;
+
 public class GameScreen implements Screen {
     private OrthographicCamera camera;
     private ShapeRenderer shapeRenderer;
@@ -104,6 +106,11 @@ public class GameScreen implements Screen {
             // Check if player has lost all lives
             if (!playerManager.isAlive()) {
                 gameStateManager.setGameOver(true);
+                if (score > highScore) {
+                    highScore = score;
+                    GameStateManager.saveHighScore(SCORE_FILE, highScore);
+                }
+                gameStateManager.setResult();
             }
 
             // Bullet-enemy collision detection
@@ -143,21 +150,32 @@ public class GameScreen implements Screen {
         if (gameStateManager.isPlaying()) {
             font.setColor(Color.WHITE);
             String scoreText = "Score: " + score;
-            font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH - 250, GameConstants.SCREEN_HEIGHT - 30);
+            font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 30);
         } else if (gameStateManager.isGameOver()) {
             font.setColor(Color.RED);
-            font.draw(batch, "GAME OVER - Press SPACE to restart", 550, 450);
+            font.draw(batch, "GAME OVER - Press SPACE to restart", GameConstants.SCREEN_WIDTH/2 - 150, GameConstants.SCREEN_HEIGHT/2);
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
                 restartGame();
             }
         } else if (gameStateManager.isResult()) {
             font.setColor(Color.GREEN);
-            font.draw(batch, "RESULTS", 650, 500);
+            font.draw(batch, "GAME OVER", GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 100);
             font.setColor(Color.WHITE);
-            font.draw(batch, "Your Score: " + score, 650, 450);
-            font.draw(batch, "High Score: " + highScore, 650, 400);
+            font.draw(batch, "Your Score: " + score, GameConstants.SCREEN_WIDTH/2 - 70, GameConstants.SCREEN_HEIGHT - 150);
+            font.draw(batch, "High Score: " + highScore, GameConstants.SCREEN_WIDTH/2 - 70, GameConstants.SCREEN_HEIGHT - 200);
+            
+            // Display top scores
+            List<GameStateManager.ScoreEntry> topScores = GameStateManager.loadTopScores(SCORE_FILE);
             font.setColor(Color.YELLOW);
-            font.draw(batch, "Press SPACE to restart", 650, 350);
+            font.draw(batch, "Top Scores:", GameConstants.SCREEN_WIDTH/2 - 60, GameConstants.SCREEN_HEIGHT - 250);
+            int y = GameConstants.SCREEN_HEIGHT - 280;
+            for (GameStateManager.ScoreEntry entry : topScores) {
+                font.draw(batch, entry.name + ": " + entry.score, GameConstants.SCREEN_WIDTH/2 - 70, y);
+                y -= 30;
+            }
+            
+            font.setColor(Color.WHITE);
+            font.draw(batch, "Press SPACE to restart", GameConstants.SCREEN_WIDTH/2 - 100, y - 30);
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
                 restartGame();
             }
