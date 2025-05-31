@@ -1,8 +1,10 @@
 package io.github.the_actual_game.entities;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
-
+import com.badlogic.gdx.math.MathUtils;
 import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.constants.LevelConfig;
 
@@ -10,9 +12,10 @@ public class GateManager {
     private Array<Gate> gates;
     private float spawnTimer;
     private LevelConfig currentLevelConfig;
+    private static final float GATE_HEIGHT = 4;  // Make gates thin lines
 
     public GateManager() {
-        gates = new Array<>();
+        gates = new Array<Gate>();
         spawnTimer = 0;
         setLevel(0); // Start at level 1 (index 0)
     }
@@ -24,14 +27,13 @@ public class GateManager {
     }
 
     public void update(float delta) {
-        // Update spawn timer
         spawnTimer += delta;
         if (spawnTimer >= currentLevelConfig.getGateSpawnInterval()) {
             spawnGatePair();
             spawnTimer = 0;
         }
 
-        // Update gate positions
+        // Update and remove gates
         for (int i = gates.size - 1; i >= 0; i--) {
             Gate gate = gates.get(i);
             gate.rect.y -= currentLevelConfig.getGateSpeed() * delta;
@@ -44,24 +46,19 @@ public class GateManager {
     }
 
     private void spawnGatePair() {
-        // Spawn a pair of gates, one positive and one negative
-        float leftX = 0; // Start of first pane
-        float rightX = GameConstants.PANE_WIDTH + GameConstants.PANE_SEPARATOR_WIDTH; // Start of second pane
-        boolean leftIsPositive = Math.random() < 0.5;
-
-        // Create left gate
-        gates.add(new Gate(leftX, GameConstants.SCREEN_HEIGHT,
-                          GameConstants.GATE_WIDTH, GameConstants.GATE_HEIGHT, leftIsPositive));
+        float halfScreenWidth = GameConstants.SCREEN_WIDTH / 2;
+        boolean leftIsPositive = MathUtils.randomBoolean();
         
-        // Create right gate
-        gates.add(new Gate(rightX, GameConstants.SCREEN_HEIGHT,
-                          GameConstants.GATE_WIDTH, GameConstants.GATE_HEIGHT, !leftIsPositive));
+        // Left gate
+        gates.add(new Gate(0, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, leftIsPositive));
+        
+        // Right gate (opposite of left gate)
+        gates.add(new Gate(halfScreenWidth, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, !leftIsPositive));
     }
 
-    public void render(ShapeRenderer shapeRenderer) {
+    public void render(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont font) {
         for (Gate gate : gates) {
-            shapeRenderer.setColor(gate.getColor());
-            shapeRenderer.rect(gate.rect.x, gate.rect.y, gate.rect.width, gate.rect.height);
+            gate.render(shapeRenderer, batch, font);
         }
     }
 
