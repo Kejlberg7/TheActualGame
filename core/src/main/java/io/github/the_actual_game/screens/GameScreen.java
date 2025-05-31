@@ -35,6 +35,7 @@ public class GameScreen implements Screen {
     private GameStateManager gameStateManager;
     private int highScore = 0;
     private final String SCORE_FILE = "scores.txt";
+    private String currentName = "";
 
     public GameScreen() {
         camera = new OrthographicCamera();
@@ -44,11 +45,11 @@ public class GameScreen implements Screen {
         batch = new SpriteBatch();
         font = new BitmapFont();
         font.getData().setScale(2);
-        
+
         enemyManager = new EnemyManager();
         playerManager = new PlayerManager();
         gateManager = new GateManager();
-        
+
         // Load laser sound
         laserSound = Gdx.audio.newSound(Gdx.files.internal("laser-gun-81720.mp3"));
         highScore = GameStateManager.loadHighScore(SCORE_FILE);
@@ -85,17 +86,17 @@ public class GameScreen implements Screen {
 
             // Update enemies and check collisions
             enemyManager.update(delta, playerManager.getPlayer());
-            
+
             // Check if any enemy has passed the player or collided with them
             Array<Enemy> enemies = enemyManager.getEnemies();
             for (Enemy enemy : enemies) {
                 if (!enemy.isAlive()) continue;
-                
+
                 // Check if enemy has passed the player's y position
                 if (enemy.rect.y + enemy.rect.height < playerManager.getPlayer().y) {
                     playerManager.hit();
                 }
-                
+
                 // Check collision with player
                 if (!playerManager.isInvulnerable() && enemy.rect.overlaps(playerManager.getPlayer())) {
                     playerManager.hit();
@@ -107,9 +108,10 @@ public class GameScreen implements Screen {
                 gameStateManager.setGameOver(true);
                 if (score > highScore) {
                     highScore = score;
-                    GameStateManager.saveHighScore(SCORE_FILE, highScore);
+                    gameStateManager.setEnterName();
+                } else {
+                    gameStateManager.setResult();
                 }
-                gameStateManager.setResult();
             }
 
             // Bullet-enemy collision detection
@@ -132,16 +134,16 @@ public class GameScreen implements Screen {
 
         // Draw shapes
         shapeRenderer.begin(ShapeType.Filled);
-        
+
         // Draw player and bullets
         playerManager.render(shapeRenderer);
-        
+
         // Draw enemies
         enemyManager.render(shapeRenderer);
-        
+
         // Draw gates
         gateManager.render(shapeRenderer);
-        
+
         shapeRenderer.end();
 
         // Draw score and other UI elements
@@ -152,29 +154,74 @@ public class GameScreen implements Screen {
             font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 30);
         } else if (gameStateManager.isGameOver()) {
             font.setColor(Color.RED);
-            font.draw(batch, "GAME OVER - Press SPACE to restart", GameConstants.SCREEN_WIDTH/2 - 150, GameConstants.SCREEN_HEIGHT/2);
+            String gameOverText = "GAME OVER - Press SPACE to restart";
+            float gameOverWidth = font.draw(batch, gameOverText, 0, 0).width;
+            font.draw(batch, gameOverText, GameConstants.SCREEN_WIDTH/2 - gameOverWidth/2, GameConstants.SCREEN_HEIGHT/2);
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
                 restartGame();
             }
+        } else if (gameStateManager.isEnterName()) {
+            font.setColor(Color.GREEN);
+            String highScoreText = "NEW HIGH SCORE!";
+            float highScoreWidth = font.draw(batch, highScoreText, 0, 0).width;
+            font.draw(batch, highScoreText, GameConstants.SCREEN_WIDTH/2 - highScoreWidth/2, GameConstants.SCREEN_HEIGHT - 100);
+
+            font.setColor(Color.WHITE);
+            String scoreText = "Score: " + score;
+            float scoreWidth = font.draw(batch, scoreText, 0, 0).width;
+            font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH/2 - scoreWidth/2, GameConstants.SCREEN_HEIGHT - 150);
+
+            String enterNameText = "Enter your name:";
+            float enterNameWidth = font.draw(batch, enterNameText, 0, 0).width;
+            font.draw(batch, enterNameText, GameConstants.SCREEN_WIDTH/2 - enterNameWidth/2, GameConstants.SCREEN_HEIGHT - 200);
+
+            String currentNameText = currentName;
+            float currentNameWidth = font.draw(batch, currentNameText, 0, 0).width;
+            font.draw(batch, currentNameText, GameConstants.SCREEN_WIDTH/2 - currentNameWidth/2, GameConstants.SCREEN_HEIGHT - 250);
+
+            String enterDoneText = "Press ENTER when done";
+            float enterDoneWidth = font.draw(batch, enterDoneText, 0, 0).width;
+            font.draw(batch, enterDoneText, GameConstants.SCREEN_WIDTH/2 - enterDoneWidth/2, GameConstants.SCREEN_HEIGHT - 300);
+
+            currentName = GameStateManager.handleNameInput(currentName);
+            if (GameStateManager.isNameEntryComplete()) {
+                GameStateManager.saveScoreWithName(SCORE_FILE, currentName, score);
+                gameStateManager.setResult();
+            }
         } else if (gameStateManager.isResult()) {
             font.setColor(Color.GREEN);
-            font.draw(batch, "GAME OVER", GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 100);
+            String gameOverText = "GAME OVER";
+            float gameOverWidth = font.draw(batch, gameOverText, 0, 0).width;
+            font.draw(batch, gameOverText, GameConstants.SCREEN_WIDTH/2 - gameOverWidth/2, GameConstants.SCREEN_HEIGHT - 100);
+
             font.setColor(Color.WHITE);
-            font.draw(batch, "Your Score: " + score, GameConstants.SCREEN_WIDTH/2 - 70, GameConstants.SCREEN_HEIGHT - 150);
-            font.draw(batch, "High Score: " + highScore, GameConstants.SCREEN_WIDTH/2 - 70, GameConstants.SCREEN_HEIGHT - 200);
-            
+            String yourScoreText = "Your Score: " + score;
+            float yourScoreWidth = font.draw(batch, yourScoreText, 0, 0).width;
+            font.draw(batch, yourScoreText, GameConstants.SCREEN_WIDTH/2 - yourScoreWidth/2, GameConstants.SCREEN_HEIGHT - 150);
+
+            String highScoreText = "High Score: " + highScore;
+            float highScoreWidth = font.draw(batch, highScoreText, 0, 0).width;
+            font.draw(batch, highScoreText, GameConstants.SCREEN_WIDTH/2 - highScoreWidth/2, GameConstants.SCREEN_HEIGHT - 200);
+
             // Display top scores
             List<GameStateManager.ScoreEntry> topScores = GameStateManager.loadTopScores(SCORE_FILE);
             font.setColor(Color.YELLOW);
-            font.draw(batch, "Top Scores:", GameConstants.SCREEN_WIDTH/2 - 60, GameConstants.SCREEN_HEIGHT - 250);
+            String topScoresText = "Top Scores:";
+            float topScoresWidth = font.draw(batch, topScoresText, 0, 0).width;
+            font.draw(batch, topScoresText, GameConstants.SCREEN_WIDTH/2 - topScoresWidth/2, GameConstants.SCREEN_HEIGHT - 250);
+
             int y = GameConstants.SCREEN_HEIGHT - 280;
             for (GameStateManager.ScoreEntry entry : topScores) {
-                font.draw(batch, entry.name + ": " + entry.score, GameConstants.SCREEN_WIDTH/2 - 70, y);
+                String scoreEntryText = entry.name + ": " + entry.score;
+                float scoreEntryWidth = font.draw(batch, scoreEntryText, 0, 0).width;
+                font.draw(batch, scoreEntryText, GameConstants.SCREEN_WIDTH/2 - scoreEntryWidth/2, y);
                 y -= 30;
             }
-            
+
             font.setColor(Color.WHITE);
-            font.draw(batch, "Press SPACE to restart", GameConstants.SCREEN_WIDTH/2 - 100, y - 30);
+            String restartText = "Press SPACE to restart";
+            float restartWidth = font.draw(batch, restartText, 0, 0).width;
+            font.draw(batch, restartText, GameConstants.SCREEN_WIDTH/2 - restartWidth/2, y - 30);
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
                 restartGame();
             }
