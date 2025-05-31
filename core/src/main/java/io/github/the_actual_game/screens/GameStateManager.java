@@ -1,11 +1,15 @@
 package io.github.the_actual_game.screens;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+
+import io.github.the_actual_game.constants.GameConstants;
 
 public class GameStateManager {
-    private enum GameState { PLAYING, ENTER_NAME, RESULT }
+    private enum GameState { PLAYING, ENTER_NAME, RESULT, LEVEL_COMPLETE }
     private GameState gameState = GameState.PLAYING;
     private boolean gameOver = false;
+    private int currentLevel = 0;
 
     public boolean isPlaying() {
         return gameState == GameState.PLAYING && !gameOver;
@@ -17,6 +21,10 @@ public class GameStateManager {
 
     public boolean isResult() {
         return gameState == GameState.RESULT;
+    }
+
+    public boolean isLevelComplete() {
+        return gameState == GameState.LEVEL_COMPLETE;
     }
 
     public boolean isGameOver() {
@@ -37,16 +45,31 @@ public class GameStateManager {
         this.gameOver = false;
     }
 
+    public void setLevelComplete() {
+        this.gameState = GameState.LEVEL_COMPLETE;
+    }
+
+    public void nextLevel() {
+        currentLevel++;
+        if (currentLevel >= GameConstants.MAX_LEVELS) {
+            setResult();
+        } else {
+            this.gameState = GameState.PLAYING;
+        }
+    }
+
+    public int getCurrentLevel() {
+        return currentLevel + 1; // Convert from 0-based to 1-based for display
+    }
+
     public void reset() {
         this.gameState = GameState.PLAYING;
         this.gameOver = false;
+        this.currentLevel = 0;
     }
 
     public static boolean areAllEnemiesDead(io.github.the_actual_game.entities.EnemyManager enemyManager) {
-        for (io.github.the_actual_game.entities.Enemy enemy : enemyManager.getEnemies()) {
-            if (enemy.isAlive()) return false;
-        }
-        return true;
+        return enemyManager.isLevelComplete();
     }
 
     public static int loadHighScore(String scoreFile) {

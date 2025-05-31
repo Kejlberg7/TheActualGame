@@ -5,33 +5,52 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import io.github.the_actual_game.constants.GameConstants;
+import io.github.the_actual_game.constants.LevelConfig;
 import io.github.the_actual_game.entities.Enemy;
 import com.badlogic.gdx.math.MathUtils;
 
 public class EnemyManager {
     private Array<Enemy> enemies;
+    private LevelConfig currentLevelConfig;
+    private int remainingEnemies;
+    private int currentLevel;
 
     public EnemyManager() {
         enemies = new Array<Enemy>();
+        setLevel(0); // Start at level 1 (index 0)
+    }
+
+    public void setLevel(int level) {
+        currentLevel = level;
+        currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
+        remainingEnemies = currentLevelConfig.getEnemyCount();
+        enemies.clear();
         spawnInitialEnemies();
     }
 
     private void spawnInitialEnemies() {
-        for (int i = 0; i < GameConstants.ENEMY_COUNT; i++) {
+        int initialSpawn = Math.min(4, remainingEnemies); // Spawn up to 4 enemies initially
+        for (int i = 0; i < initialSpawn; i++) {
             float x = GameConstants.ENEMY_INITIAL_X + i * GameConstants.ENEMY_SPACING;
             float y = GameConstants.ENEMY_INITIAL_Y;
-            enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, GameConstants.ENEMY_DEFAULT_LIFE));
+            enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
+                                currentLevelConfig.getEnemyLife()));
+            remainingEnemies--;
         }
     }
 
     private void spawnNewEnemy() {
+        if (remainingEnemies <= 0) return;
+        
         // Generate a random x position within screen bounds
         float minX = GameConstants.ENEMY_WIDTH;
         float maxX = GameConstants.SCREEN_WIDTH - GameConstants.ENEMY_WIDTH;
         float x = MathUtils.random(minX, maxX);
         float y = GameConstants.SCREEN_HEIGHT; // Start at the top of the screen
         
-        enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, GameConstants.ENEMY_DEFAULT_LIFE));
+        enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
+                            currentLevelConfig.getEnemyLife()));
+        remainingEnemies--;
     }
 
     public void update(float delta, Rectangle player) {
@@ -40,16 +59,18 @@ public class EnemyManager {
             Enemy enemy = enemies.get(i);
             if (!enemy.isAlive() || enemy.rect.y + enemy.rect.height < 0) {
                 enemies.removeIndex(i);
-                // Spawn a new enemy to replace the one that was removed
-                spawnNewEnemy();
+                // Only spawn a new enemy if we have remaining enemies for this level
+                if (remainingEnemies > 0) {
+                    spawnNewEnemy();
+                }
             }
         }
 
         // Update remaining enemies
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) continue;
-            // Move enemy downward
-            enemy.rect.y -= GameConstants.ENEMY_SPEED * delta;
+            // Move enemy downward using level-specific speed
+            enemy.rect.y -= currentLevelConfig.getEnemySpeed() * delta;
         }
     }
 
@@ -72,11 +93,18 @@ public class EnemyManager {
     }
 
     public void reset() {
-        enemies.clear();
-        spawnInitialEnemies();
+        setLevel(0);
     }
 
     public Array<Enemy> getEnemies() {
         return enemies;
+    }
+
+    public boolean isLevelComplete() {
+        return remainingEnemies <= 0 && enemies.size == 0;
+    }
+
+    public int getCurrentLevel() {
+        return currentLevel + 1; // Convert from 0-based to 1-based for display
     }
 }

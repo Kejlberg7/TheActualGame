@@ -1,7 +1,10 @@
 package io.github.the_actual_game.screens;
 
+import java.util.List;
+
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -11,16 +14,13 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.audio.Sound;
 
+import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.entities.Enemy;
 import io.github.the_actual_game.entities.EnemyManager;
 import io.github.the_actual_game.entities.Gate;
 import io.github.the_actual_game.entities.GateManager;
 import io.github.the_actual_game.entities.PlayerManager;
-import io.github.the_actual_game.constants.GameConstants;
-
-import java.util.List;
 
 public class GameScreen implements Screen {
     private OrthographicCamera camera;
@@ -114,6 +114,11 @@ public class GameScreen implements Screen {
                 }
             }
 
+            // Check if level is complete
+            if (enemyManager.isLevelComplete()) {
+                gameStateManager.setLevelComplete();
+            }
+
             // Bullet-enemy collision detection
             Array<Rectangle> bullets = playerManager.getBullets();
             for (int i = bullets.size - 1; i >= 0; i--) {
@@ -152,6 +157,28 @@ public class GameScreen implements Screen {
             font.setColor(Color.WHITE);
             String scoreText = "Score: " + score;
             font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 30);
+            
+            // Draw level indicator
+            String levelText = "Level: " + gameStateManager.getCurrentLevel();
+            font.draw(batch, levelText, 10, GameConstants.SCREEN_HEIGHT - 60);
+        } else if (gameStateManager.isLevelComplete()) {
+            font.setColor(Color.GREEN);
+            String levelCompleteText = "Level " + gameStateManager.getCurrentLevel() + " Complete!";
+            float levelCompleteWidth = font.draw(batch, levelCompleteText, 0, 0).width;
+            font.draw(batch, levelCompleteText, GameConstants.SCREEN_WIDTH/2 - levelCompleteWidth/2, GameConstants.SCREEN_HEIGHT/2);
+
+            font.setColor(Color.WHITE);
+            String pressSpaceText = "Press SPACE to continue";
+            float pressSpaceWidth = font.draw(batch, pressSpaceText, 0, 0).width;
+            font.draw(batch, pressSpaceText, GameConstants.SCREEN_WIDTH/2 - pressSpaceWidth/2, GameConstants.SCREEN_HEIGHT/2 - 40);
+
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
+                gameStateManager.nextLevel();
+                int newLevel = gameStateManager.getCurrentLevel() - 1; // Convert back to 0-based
+                enemyManager.setLevel(newLevel);
+                playerManager.setLevel(newLevel);
+                gateManager.setLevel(newLevel);
+            }
         } else if (gameStateManager.isGameOver()) {
             font.setColor(Color.RED);
             String gameOverText = "GAME OVER - Press SPACE to restart";

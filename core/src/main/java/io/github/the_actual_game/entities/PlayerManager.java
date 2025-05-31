@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import io.github.the_actual_game.constants.GameConstants;
+import io.github.the_actual_game.constants.LevelConfig;
 
 public class PlayerManager {
     private Rectangle player;
@@ -16,6 +17,7 @@ public class PlayerManager {
     private float invulnerabilityTimer;
     private static final float INVULNERABILITY_DURATION = 2.0f; // 2 seconds of invulnerability after being hit
     private int numShots = 1;
+    private LevelConfig currentLevelConfig;
 
     public PlayerManager() {
         player = new Rectangle();
@@ -26,6 +28,11 @@ public class PlayerManager {
         bullets = new Array<Rectangle>();
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
+        setLevel(0); // Start at level 1 (index 0)
+    }
+
+    public void setLevel(int level) {
+        currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
     }
 
     public void update(float delta) {
@@ -51,7 +58,7 @@ public class PlayerManager {
         // Update bullets
         for (int i = bullets.size - 1; i >= 0; i--) {
             Rectangle bullet = bullets.get(i);
-            bullet.y += GameConstants.BULLET_SPEED * delta;
+            bullet.y += currentLevelConfig.getBulletSpeed() * delta;
             if (bullet.y > GameConstants.SCREEN_HEIGHT) {
                 bullets.removeIndex(i);
             }

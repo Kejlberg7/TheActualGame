@@ -2,21 +2,31 @@ package io.github.the_actual_game.entities;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Array;
+
 import io.github.the_actual_game.constants.GameConstants;
+import io.github.the_actual_game.constants.LevelConfig;
 
 public class GateManager {
     private Array<Gate> gates;
     private float spawnTimer;
+    private LevelConfig currentLevelConfig;
 
     public GateManager() {
         gates = new Array<>();
+        spawnTimer = 0;
+        setLevel(0); // Start at level 1 (index 0)
+    }
+
+    public void setLevel(int level) {
+        currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
+        gates.clear();
         spawnTimer = 0;
     }
 
     public void update(float delta) {
         // Update spawn timer
         spawnTimer += delta;
-        if (spawnTimer >= GameConstants.GATE_SPAWN_INTERVAL) {
+        if (spawnTimer >= currentLevelConfig.getGateSpawnInterval()) {
             spawnGatePair();
             spawnTimer = 0;
         }
@@ -24,7 +34,7 @@ public class GateManager {
         // Update gate positions
         for (int i = gates.size - 1; i >= 0; i--) {
             Gate gate = gates.get(i);
-            gate.rect.y -= GameConstants.GATE_SPEED * delta;
+            gate.rect.y -= currentLevelConfig.getGateSpeed() * delta;
             
             // Remove gates that are off screen or used
             if (gate.rect.y + gate.rect.height < 0 || gate.isUsed()) {
@@ -60,7 +70,6 @@ public class GateManager {
     }
 
     public void reset() {
-        gates.clear();
-        spawnTimer = 0;
+        setLevel(0);
     }
 }

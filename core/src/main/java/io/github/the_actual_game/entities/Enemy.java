@@ -1,17 +1,18 @@
 package io.github.the_actual_game.entities;
 
-import com.badlogic.gdx.math.Rectangle;
-import io.github.the_actual_game.constants.GameConstants;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.math.Rectangle;
 
 public class Enemy {
     public Rectangle rect;
     private int life;
+    private int initialLife;
     private Color color;
 
     public Enemy(float x, float y, float width, float height, int life) {
         this.rect = new Rectangle(x, y, width, height);
         this.life = life;
+        this.initialLife = life;
         this.color = new Color(0, 1, 0, 1); // Start with full green
     }
 
@@ -23,7 +24,7 @@ public class Enemy {
         life -= damage;
         if (life > 0) {
             // Calculate life percentage
-            float lifePercentage = life / (float)GameConstants.ENEMY_DEFAULT_LIFE;
+            float lifePercentage = life / (float)initialLife;
             
             // Create color transition: green -> yellow -> red
             if (lifePercentage > 0.5f) {
