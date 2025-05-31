@@ -32,4 +32,12 @@ public class GameConstants {
     public static final float BULLET_WIDTH = 6;
     public static final float BULLET_HEIGHT = 12;
     public static final float BULLET_SPEED = 400;
+
+    // Gate constants
+    public static final float GATE_WIDTH = 40;
+    public static final float GATE_HEIGHT = 60;
+    public static final float GATE_SPEED = 150;
+    public static final int GATE_SPAWN_INTERVAL = 5; // Seconds between gate spawns
+    public static final int MAX_SHOTS = 5;
+    public static final int MIN_SHOTS = 1;
 }

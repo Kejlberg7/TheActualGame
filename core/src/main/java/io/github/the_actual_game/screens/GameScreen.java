@@ -11,25 +11,23 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.audio.Sound;
 
+import io.github.the_actual_game.entities.Enemy;
 import io.github.the_actual_game.entities.EnemyManager;
+import io.github.the_actual_game.entities.Gate;
+import io.github.the_actual_game.entities.GateManager;
 import io.github.the_actual_game.entities.PlayerManager;
 import io.github.the_actual_game.constants.GameConstants;
-import com.badlogic.gdx.audio.Sound;
-import io.github.the_actual_game.entities.Enemy;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.util.Scanner;
 
 public class GameScreen implements Screen {
     private OrthographicCamera camera;
     private ShapeRenderer shapeRenderer;
-    private boolean gameOver;
     private BitmapFont font;
     private SpriteBatch batch;
     private EnemyManager enemyManager;
     private PlayerManager playerManager;
+    private GateManager gateManager;
     private Sound laserSound;
     private int score = 0;
     private GameStateManager gameStateManager;
@@ -47,6 +45,7 @@ public class GameScreen implements Screen {
         
         enemyManager = new EnemyManager();
         playerManager = new PlayerManager();
+        gateManager = new GateManager();
         
         // Load laser sound
         laserSound = Gdx.audio.newSound(Gdx.files.internal("laser-gun-81720.mp3"));
@@ -72,6 +71,16 @@ public class GameScreen implements Screen {
                 laserSound.play();
             }
 
+            // Update gates and check for collisions
+            gateManager.update(delta);
+            Rectangle player = playerManager.getPlayer();
+            for (Gate gate : gateManager.getGates()) {
+                if (!gate.isUsed() && gate.rect.overlaps(player)) {
+                    playerManager.adjustShots(gate.isPositive());
+                    gate.setUsed();
+                }
+            }
+
             // Update enemies and check collisions
             enemyManager.update(delta, playerManager.getPlayer());
             if (enemyManager.checkCollisions(playerManager.getPlayer())) {
@@ -86,12 +95,12 @@ public class GameScreen implements Screen {
                 for (Enemy enemy : enemies) {
                     if (!enemy.isAlive()) continue;
                     if (enemy.rect.overlaps(bullet)) {
-                        enemy.hit(1); // Damage is 1 for now
+                        enemy.hit(1);
                         if (!enemy.isAlive()) {
                             score += 10;
                         }
                         bullets.removeIndex(i);
-                        break; // Bullet can only hit one enemy
+                        break;
                     }
                 }
             }
@@ -115,31 +124,24 @@ public class GameScreen implements Screen {
         // Draw enemies
         enemyManager.render(shapeRenderer);
         
+        // Draw gates
+        gateManager.render(shapeRenderer);
+        
         shapeRenderer.end();
 
-        // Draw score in the upper right corner (only during play)
+        // Draw score and other UI elements
+        batch.begin();
         if (gameStateManager.isPlaying()) {
-            batch.begin();
             font.setColor(Color.WHITE);
             String scoreText = "Score: " + score;
             font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH - 250, GameConstants.SCREEN_HEIGHT - 30);
-            batch.end();
-        }
-
-        // Draw game over text if needed
-        if (gameStateManager.isGameOver()) {
-            batch.begin();
+        } else if (gameStateManager.isGameOver()) {
             font.setColor(Color.RED);
             font.draw(batch, "GAME OVER - Press SPACE to restart", 550, 450);
-            batch.end();
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
                 restartGame();
             }
-        }
-
-        // Draw result screen if all enemies are dead
-        if (gameStateManager.isResult()) {
-            batch.begin();
+        } else if (gameStateManager.isResult()) {
             font.setColor(Color.GREEN);
             font.draw(batch, "RESULTS", 650, 500);
             font.setColor(Color.WHITE);
@@ -147,17 +149,18 @@ public class GameScreen implements Screen {
             font.draw(batch, "High Score: " + highScore, 650, 400);
             font.setColor(Color.YELLOW);
             font.draw(batch, "Press SPACE to restart", 650, 350);
-            batch.end();
             if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
                 restartGame();
             }
         }
+        batch.end();
     }
 
     private void restartGame() {
         gameStateManager.reset();
         playerManager.reset();
         enemyManager.reset();
+        gateManager.reset();
         score = 0;
     }
 

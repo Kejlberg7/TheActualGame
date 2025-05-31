@@ -12,6 +12,7 @@ public class PlayerManager {
     private Rectangle player;
     private Array<Rectangle> bullets;
     private boolean spacePressedLastFrame = false;
+    private int numShots = 1;
 
     public PlayerManager() {
         player = new Rectangle();
@@ -52,16 +53,30 @@ public class PlayerManager {
         boolean shotFired = false;
         
         if (spacePressed && !spacePressedLastFrame) {
-            Rectangle bullet = new Rectangle();
-            bullet.width = GameConstants.BULLET_WIDTH;
-            bullet.height = GameConstants.BULLET_HEIGHT;
-            bullet.x = player.x + player.width / 2 - GameConstants.BULLET_WIDTH / 2;
-            bullet.y = player.y + player.height;
-            bullets.add(bullet);
+            // Fire multiple bullets based on numShots
+            float spacing = 8f; // Space between multiple shots
+            float startX = player.x + player.width / 2 - (numShots * spacing) / 2;
+            
+            for (int i = 0; i < numShots; i++) {
+                Rectangle bullet = new Rectangle();
+                bullet.width = GameConstants.BULLET_WIDTH;
+                bullet.height = GameConstants.BULLET_HEIGHT;
+                bullet.x = startX + (i * spacing);
+                bullet.y = player.y + player.height;
+                bullets.add(bullet);
+            }
             shotFired = true;
         }
         spacePressedLastFrame = spacePressed;
         return shotFired;
+    }
+
+    public void adjustShots(boolean increase) {
+        if (increase) {
+            numShots = Math.min(numShots + 1, GameConstants.MAX_SHOTS);
+        } else {
+            numShots = Math.max(numShots - 1, GameConstants.MIN_SHOTS);
+        }
     }
 
     public void render(ShapeRenderer shapeRenderer) {
@@ -84,6 +99,7 @@ public class PlayerManager {
         player.x = GameConstants.PLAYER_INITIAL_X;
         player.y = GameConstants.PLAYER_INITIAL_Y;
         bullets.clear();
+        numShots = 1;
     }
 
     public Array<Rectangle> getBullets() {
