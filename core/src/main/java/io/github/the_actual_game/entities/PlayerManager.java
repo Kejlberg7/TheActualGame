@@ -15,7 +15,8 @@ public class PlayerManager {
     private float invulnerabilityTimer;
     private static final float INVULNERABILITY_DURATION = 2.0f; // 2 seconds of invulnerability after being hit
     private float shootingTimer = 0;
-    private static final float SHOOTING_INTERVAL = 0.5f; // Shoot every 0.5 seconds
+    private float currentShootingInterval;
+    private int currentShotCount;
 
     public PlayerManager() {
         player = new Rectangle();
@@ -26,6 +27,8 @@ public class PlayerManager {
         bullets = new Array<Rectangle>();
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
+        currentShootingInterval = GameConstants.DEFAULT_SHOOTING_INTERVAL;
+        currentShotCount = GameConstants.DEFAULT_SHOT_COUNT;
     }
 
     public void update(float delta) {
@@ -59,19 +62,45 @@ public class PlayerManager {
 
         // Handle auto-shooting
         shootingTimer += delta;
-        if (shootingTimer >= SHOOTING_INTERVAL) {
+        if (shootingTimer >= currentShootingInterval) {
             shoot();
             shootingTimer = 0;
         }
     }
 
     private void shoot() {
-        Rectangle bullet = new Rectangle();
-        bullet.width = GameConstants.BULLET_WIDTH;
-        bullet.height = GameConstants.BULLET_HEIGHT;
-        bullet.x = player.x + player.width / 2 - GameConstants.BULLET_WIDTH / 2;
-        bullet.y = player.y + player.height;
-        bullets.add(bullet);
+        float totalWidth = (currentShotCount - 1) * GameConstants.MULTI_SHOT_SPREAD;
+        float startX = player.x + player.width / 2 - totalWidth / 2;
+
+        for (int i = 0; i < currentShotCount; i++) {
+            Rectangle bullet = new Rectangle();
+            bullet.width = GameConstants.BULLET_WIDTH;
+            bullet.height = GameConstants.BULLET_HEIGHT;
+            bullet.x = startX + (i * GameConstants.MULTI_SHOT_SPREAD);
+            bullet.y = player.y + player.height;
+            bullets.add(bullet);
+        }
+    }
+
+    public void adjustShootingSpeed(boolean increase) {
+        float adjustment = 0.1f; // Adjust shooting interval by 0.1 seconds
+        if (increase) {
+            // Faster shooting = lower interval
+            currentShootingInterval = Math.max(GameConstants.MIN_SHOOTING_INTERVAL, 
+                                             currentShootingInterval - adjustment);
+        } else {
+            // Slower shooting = higher interval
+            currentShootingInterval = Math.min(GameConstants.MAX_SHOOTING_INTERVAL, 
+                                             currentShootingInterval + adjustment);
+        }
+    }
+
+    public void adjustShotCount(boolean increase) {
+        if (increase) {
+            currentShotCount = Math.min(currentShotCount + 1, GameConstants.MAX_SHOT_COUNT);
+        } else {
+            currentShotCount = Math.max(currentShotCount - 1, GameConstants.MIN_SHOT_COUNT);
+        }
     }
 
     public boolean handleShooting() {
@@ -99,6 +128,14 @@ public class PlayerManager {
             float y = GameConstants.SCREEN_HEIGHT - 30;
             shapeRenderer.rect(x, y, GameConstants.PLAYER_WIDTH * 0.5f, GameConstants.PLAYER_HEIGHT * 0.5f);
         }
+
+        // Draw shot count indicator in the top-right corner
+        shapeRenderer.setColor(Color.YELLOW);
+        for (int i = 0; i < currentShotCount; i++) {
+            float x = GameConstants.SCREEN_WIDTH - 30 - i * (GameConstants.BULLET_WIDTH + 5);
+            float y = GameConstants.SCREEN_HEIGHT - 30;
+            shapeRenderer.rect(x, y, GameConstants.BULLET_WIDTH, GameConstants.BULLET_HEIGHT);
+        }
     }
 
     public Rectangle getPlayer() {
@@ -116,6 +153,8 @@ public class PlayerManager {
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
         shootingTimer = 0;
+        currentShootingInterval = GameConstants.DEFAULT_SHOOTING_INTERVAL;
+        currentShotCount = GameConstants.DEFAULT_SHOT_COUNT;
     }
 
     public boolean isInvulnerable() {
