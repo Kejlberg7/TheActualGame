@@ -17,7 +17,7 @@ public class PlayerManager {
         player = new Rectangle();
         player.width = GameConstants.PLAYER_WIDTH;
         player.height = GameConstants.PLAYER_HEIGHT;
-        player.x = GameConstants.SCREEN_WIDTH/2 - player.width/2;
+        player.x = GameConstants.PLAYER_INITIAL_X;
         player.y = GameConstants.PLAYER_INITIAL_Y;
         bullets = new Array<Rectangle>();
     }
@@ -33,7 +33,9 @@ public class PlayerManager {
 
         // Keep player within screen bounds
         if (player.x < 0) player.x = 0;
-        if (player.x > GameConstants.SCREEN_WIDTH - player.width) player.x = GameConstants.SCREEN_WIDTH - player.width;
+        if (player.x + player.width > GameConstants.SCREEN_WIDTH) {
+            player.x = GameConstants.SCREEN_WIDTH - player.width;
+        }
 
         // Update bullets
         for (int i = bullets.size - 1; i >= 0; i--) {
@@ -79,7 +81,7 @@ public class PlayerManager {
     }
 
     public void reset() {
-        player.x = GameConstants.SCREEN_WIDTH/2 - player.width/2;
+        player.x = GameConstants.PLAYER_INITIAL_X;
         player.y = GameConstants.PLAYER_INITIAL_Y;
         bullets.clear();
     }

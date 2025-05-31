@@ -15,13 +15,19 @@ public class EnemyManager {
     }
 
     private void spawnInitialEnemies() {
-        for (int i = 0; i < GameConstants.ENEMY_COUNT; i++) {
-            Rectangle enemy = new Rectangle();
-            enemy.width = GameConstants.ENEMY_WIDTH;
-            enemy.height = GameConstants.ENEMY_HEIGHT;
-            enemy.x = GameConstants.ENEMY_INITIAL_X + i * GameConstants.ENEMY_SPACING;
-            enemy.y = GameConstants.ENEMY_INITIAL_Y;
-            enemies.add(enemy);
+        // Spawn enemies for each pane
+        for (int pane = 0; pane < GameConstants.NUMBER_OF_PANES; pane++) {
+            float paneOffset = pane * GameConstants.PANE_WIDTH;
+            
+            // Spawn enemies within this pane
+            for (int i = 0; i < GameConstants.ENEMY_COUNT_PER_PANE; i++) {
+                Rectangle enemy = new Rectangle();
+                enemy.width = GameConstants.ENEMY_WIDTH;
+                enemy.height = GameConstants.ENEMY_HEIGHT;
+                enemy.x = paneOffset + GameConstants.ENEMY_INITIAL_X + i * GameConstants.ENEMY_SPACING;
+                enemy.y = GameConstants.ENEMY_INITIAL_Y;
+                enemies.add(enemy);
+            }
         }
     }
 
@@ -47,6 +53,12 @@ public class EnemyManager {
     }
 
     public void render(ShapeRenderer shapeRenderer) {
+        // Draw pane separator
+        shapeRenderer.setColor(Color.GRAY);
+        float separatorX = GameConstants.PANE_WIDTH - GameConstants.PANE_SEPARATOR_WIDTH / 2;
+        shapeRenderer.rect(separatorX, 0, GameConstants.PANE_SEPARATOR_WIDTH, GameConstants.SCREEN_HEIGHT);
+
+        // Draw enemies
         shapeRenderer.setColor(Color.RED);
         for (Rectangle enemy : enemies) {
             shapeRenderer.rect(enemy.x, enemy.y, enemy.width, enemy.height);
