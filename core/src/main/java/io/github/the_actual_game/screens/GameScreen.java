@@ -2,13 +2,16 @@ package io.github.the_actual_game.screens;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.graphics.Color;
+
+import io.github.the_actual_game.entities.EnemyManager;
 import com.badlogic.gdx.audio.Sound;
 
 public class GameScreen implements Screen {
@@ -20,6 +23,10 @@ public class GameScreen implements Screen {
     private static final float PLAYER_SPEED = 300;
     private static final float PLAYER_WIDTH = 40;
     private static final float PLAYER_HEIGHT = 40;
+    private boolean gameOver;
+    private BitmapFont font;
+    private SpriteBatch batch;
+    private EnemyManager enemyManager;
     private static final float BULLET_WIDTH = 10;
     private static final float BULLET_HEIGHT = 20;
     private static final float BULLET_SPEED = 600;
@@ -31,6 +38,9 @@ public class GameScreen implements Screen {
         camera.setToOrtho(false, 1500, 900);
 
         shapeRenderer = new ShapeRenderer();
+batch = new SpriteBatch();
+        font = new BitmapFont();
+        font.getData().setScale(2);
 
         // Create player at the bottom center of the screen
         player = new Rectangle();
@@ -68,16 +78,18 @@ public class GameScreen implements Screen {
         // Update camera
         camera.update();
         shapeRenderer.setProjectionMatrix(camera.combined);
+        batch.setProjectionMatrix(camera.combined);
 
-        // Handle player movement
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.LEFT)) {
-            player.x -= PLAYER_SPEED * delta;
-        }
-        if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.RIGHT)) {
-            player.x += PLAYER_SPEED * delta;
-        }
+        if (!gameOver) {
+            // Handle player movement
+            if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.LEFT)) {
+                player.x -= PLAYER_SPEED * delta;
+            }
+            if (Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.RIGHT)) {
+                player.x += PLAYER_SPEED * delta;
+            }
 
-        // Handle shooting
+            // Handle shooting
         boolean spacePressed = Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.SPACE);
         if (spacePressed && !spacePressedLastFrame) {
             Rectangle bullet = new Rectangle();
@@ -103,8 +115,15 @@ public class GameScreen implements Screen {
         }
 
         // Keep player within screen bounds
-        if (player.x < 0) player.x = 0;
-        if (player.x > 1500 - player.width) player.x = 1500 - player.width;
+            if (player.x < 0) player.x = 0;
+            if (player.x > 1500 - player.width) player.x = 1500 - player.width;
+
+            // Update enemies and check collisions
+            enemyManager.update(delta, player);
+            if (enemyManager.checkCollisions(player)) {
+                gameOver = true;
+            }
+        }
 
         // Draw shapes
         shapeRenderer.begin(ShapeType.Filled);
@@ -113,19 +132,35 @@ public class GameScreen implements Screen {
         shapeRenderer.setColor(Color.BLUE);
         shapeRenderer.rect(player.x, player.y, player.width, player.height);
 
-        // Draw enemies (red rectangles)
-        shapeRenderer.setColor(Color.RED);
-        for (Rectangle enemy : enemies) {
-            shapeRenderer.rect(enemy.x, enemy.y, enemy.width, enemy.height);
-        }
+        // Draw enemies
+        enemyManager.render(shapeRenderer);
 
         // Draw bullets (yellow rectangles)
         shapeRenderer.setColor(Color.YELLOW);
         for (Rectangle bullet : bullets) {
             shapeRenderer.rect(bullet.x, bullet.y, bullet.width, bullet.height);
         }
-
         shapeRenderer.end();
+
+        // Draw game over text if needed
+        if (gameOver) {
+            batch.begin();
+            font.setColor(Color.RED);
+            font.draw(batch, "GAME OVER - Press SPACE to restart", 550, 450);
+            batch.end();
+
+            // Restart game if space is pressed
+            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
+                restartGame();
+            }
+        }
+    }
+
+    private void restartGame() {
+        gameOver = false;
+        player.x = 1500/2 - player.width/2;
+        player.y = 50;
+        enemyManager.reset();
     }
 
     @Override
@@ -151,5 +186,7 @@ public class GameScreen implements Screen {
         if (laserSound != null) {
             laserSound.dispose();
         }
+        batch.dispose();
+        font.dispose();
     }
 }
