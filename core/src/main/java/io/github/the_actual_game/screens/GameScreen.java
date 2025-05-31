@@ -79,7 +79,6 @@ public class GameScreen implements Screen {
             Rectangle player = playerManager.getPlayer();
             for (Gate gate : gateManager.getGates()) {
                 if (!gate.isUsed() && gate.rect.overlaps(player)) {
-                    playerManager.adjustShots(gate.isPositive());
                     gate.setUsed();
                 }
             }
