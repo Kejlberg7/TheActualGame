@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.constants.LevelConfig;
 
@@ -26,11 +27,23 @@ public class GateManager {
         spawnTimer = 0;
     }
 
-    public void update(float delta) {
+    public void update(float delta, Array<Rectangle> bullets) {
         spawnTimer += delta;
         if (spawnTimer >= currentLevelConfig.getGateSpawnInterval()) {
             spawnGatePair();
             spawnTimer = 0;
+        }
+
+        // Check bullet collisions with gates
+        for (Gate gate : gates) {
+            if (!gate.isUsed()) {
+                for (Rectangle bullet : bullets) {
+                    if (bullet.overlaps(gate.rect)) {
+                        gate.hit(); // Improve gate's power level
+                        // Removed bullet removal to allow pass-through
+                    }
+                }
+            }
         }
 
         // Update and remove gates
@@ -47,13 +60,15 @@ public class GateManager {
 
     private void spawnGatePair() {
         float halfScreenWidth = GameConstants.SCREEN_WIDTH / 2;
-        boolean leftIsPositive = MathUtils.randomBoolean();
+        
+        // Get current level (0-based, so add 1)
+        int currentLevel = currentLevelConfig.getLevel();
         
         // Left gate
-        gates.add(new Gate(0, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, leftIsPositive));
+        gates.add(new Gate(0, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, currentLevel));
         
-        // Right gate (opposite of left gate)
-        gates.add(new Gate(halfScreenWidth, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, !leftIsPositive));
+        // Right gate
+        gates.add(new Gate(halfScreenWidth, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, currentLevel));
     }
 
     public void render(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont font) {

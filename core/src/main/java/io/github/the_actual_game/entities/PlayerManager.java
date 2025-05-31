@@ -89,9 +89,9 @@ public class PlayerManager {
         }
     }
 
-    public void adjustShootingSpeed(boolean increase) {
-        float adjustment = 0.1f; // Adjust shooting interval by 0.1 seconds
-        if (increase) {
+    public void adjustShootingSpeed(int powerLevel) {
+        float adjustment = 0.02f * Math.abs(powerLevel); // Reduced from 0.05f to 0.02f
+        if (powerLevel > 0) {
             // Faster shooting = lower interval
             currentShootingInterval = Math.max(GameConstants.MIN_SHOOTING_INTERVAL, 
                                            currentShootingInterval - adjustment);
@@ -102,11 +102,16 @@ public class PlayerManager {
         }
     }
 
-    public void adjustShotCount(boolean increase) {
-        if (increase) {
-            currentShotCount = Math.min(currentShotCount + 1, GameConstants.MAX_SHOT_COUNT);
+    public void adjustShotCount(int powerLevel) {
+        // Make shot count changes more gradual
+        if (powerLevel > 0) {
+            // Only add a shot if we accumulate enough positive power
+            if (powerLevel >= 3) {
+                currentShotCount = Math.min(currentShotCount + 1, GameConstants.MAX_SHOT_COUNT);
+            }
         } else {
-            currentShotCount = Math.max(currentShotCount - 1, GameConstants.MIN_SHOT_COUNT);
+            // Remove shots more aggressively for negative gates
+            currentShotCount = Math.max(currentShotCount + (powerLevel / 2), GameConstants.MIN_SHOT_COUNT);
         }
     }
 

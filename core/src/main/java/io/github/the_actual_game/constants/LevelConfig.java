@@ -7,9 +7,10 @@ public class LevelConfig {
     private final float gateSpeed;
     private final int gateSpawnInterval;
     private final float bulletSpeed;
+    private final int level;
 
-    public LevelConfig(int enemyCount, float enemySpeed, int enemyLife, 
-                      float gateSpeed, int gateSpawnInterval, float bulletSpeed) {
+    public LevelConfig(int level, int enemyCount, float enemySpeed, int enemyLife, float gateSpeed, int gateSpawnInterval, float bulletSpeed) {
+        this.level = level;
         this.enemyCount = enemyCount;
         this.enemySpeed = enemySpeed;
         this.enemyLife = enemyLife;
@@ -24,4 +25,5 @@ public class LevelConfig {
     public float getGateSpeed() { return gateSpeed; }
     public int getGateSpawnInterval() { return gateSpawnInterval; }
     public float getBulletSpeed() { return bulletSpeed; }
+    public int getLevel() { return level; }
 } 

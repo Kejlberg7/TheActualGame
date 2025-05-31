@@ -75,14 +75,15 @@ public class GameScreen implements Screen {
             }
 
             // Update gates and check for collisions
-            gateManager.update(delta);
+            gateManager.update(delta, playerManager.getBullets());
             Rectangle player = playerManager.getPlayer();
             for (Gate gate : gateManager.getGates()) {
                 if (!gate.isUsed() && gate.rect.overlaps(player)) {
+                    int powerLevel = gate.getPowerLevel();
                     if (gate.getType() == Gate.GateType.SPEED) {
-                        playerManager.adjustShootingSpeed(gate.isPositive());
+                        playerManager.adjustShootingSpeed(powerLevel);
                     } else {
-                        playerManager.adjustShotCount(gate.isPositive());
+                        playerManager.adjustShotCount(powerLevel);
                     }
                     gate.setUsed();
                 }
