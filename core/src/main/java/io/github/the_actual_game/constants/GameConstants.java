@@ -26,8 +26,6 @@ public class GameConstants {
     public static final float ENEMY_SPACING = PANE_WIDTH / (ENEMY_COUNT_PER_PANE + 1);
     public static final float ENEMY_INITIAL_X = ENEMY_SPACING;  // Will be offset for each pane
     public static final int ENEMY_COUNT = 5;
-    public static final float ENEMY_SPACING = 300;
-    public static final float ENEMY_INITIAL_X = 100;
     public static final int ENEMY_DEFAULT_LIFE = 10; // Default life for each enemy/target
 
     // Bullet constants
