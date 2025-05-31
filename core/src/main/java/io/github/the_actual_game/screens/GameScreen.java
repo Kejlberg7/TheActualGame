@@ -64,7 +64,7 @@ public class GameScreen implements Screen {
         shapeRenderer.setProjectionMatrix(camera.combined);
         batch.setProjectionMatrix(camera.combined);
 
-        if (gameStateManager.isPlaying() && !gameStateManager.isGameOver()) {
+        if (gameStateManager.isPlaying()) {
             // Update player and handle shooting
             playerManager.update(delta);
             if (playerManager.handleShooting() && laserSound != null) {
@@ -83,13 +83,31 @@ public class GameScreen implements Screen {
 
             // Update enemies and check collisions
             enemyManager.update(delta, playerManager.getPlayer());
-            if (enemyManager.checkCollisions(playerManager.getPlayer())) {
+            
+            // Check if any enemy has passed the player or collided with them
+            Array<Enemy> enemies = enemyManager.getEnemies();
+            for (Enemy enemy : enemies) {
+                if (!enemy.isAlive()) continue;
+                
+                // Check if enemy has passed the player's y position
+                if (enemy.rect.y + enemy.rect.height < playerManager.getPlayer().y) {
+                    playerManager.hit();
+                    enemy.rect.y = GameConstants.SCREEN_HEIGHT; // Move enemy back to top
+                }
+                
+                // Check collision with player
+                if (!playerManager.isInvulnerable() && enemy.rect.overlaps(playerManager.getPlayer())) {
+                    playerManager.hit();
+                }
+            }
+
+            // Check if player has lost all lives
+            if (!playerManager.isAlive()) {
                 gameStateManager.setGameOver(true);
             }
 
             // Bullet-enemy collision detection
             Array<Rectangle> bullets = playerManager.getBullets();
-            Array<Enemy> enemies = enemyManager.getEnemies();
             for (int i = bullets.size - 1; i >= 0; i--) {
                 Rectangle bullet = bullets.get(i);
                 for (Enemy enemy : enemies) {
@@ -102,15 +120,6 @@ public class GameScreen implements Screen {
                         bullets.removeIndex(i);
                         break;
                     }
-                }
-            }
-
-            // Check if all enemies are dead
-            if (GameStateManager.areAllEnemiesDead(enemyManager)) {
-                gameStateManager.setResult();
-                if (score > highScore) {
-                    highScore = score;
-                    GameStateManager.saveHighScore(SCORE_FILE, highScore);
                 }
             }
         }

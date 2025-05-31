@@ -11,11 +11,12 @@ public class GameConstants {
     public static final float PANE_SEPARATOR_WIDTH = 4;
 
     // Player constants
-    public static final float PLAYER_SPEED = 200;
-    public static final float PLAYER_WIDTH = 30;
-    public static final float PLAYER_HEIGHT = 30;
-    public static final float PLAYER_INITIAL_Y = 40;
+    public static final float PLAYER_SPEED = 300;
+    public static final float PLAYER_WIDTH = 40;
+    public static final float PLAYER_HEIGHT = 40;
+    public static final float PLAYER_INITIAL_Y = 50;
     public static final float PLAYER_INITIAL_X = PANE_WIDTH / 4;  // Start in the left pane
+    public static final int PLAYER_DEFAULT_LIFE = 3; // Number of lives the player starts with
 
     // Enemy constants
     public static final float ENEMY_SPEED = 100;

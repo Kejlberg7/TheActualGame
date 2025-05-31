@@ -12,18 +12,28 @@ public class PlayerManager {
     private Rectangle player;
     private Array<Rectangle> bullets;
     private boolean spacePressedLastFrame = false;
+    private int lives;
+    private float invulnerabilityTimer;
+    private static final float INVULNERABILITY_DURATION = 2.0f; // 2 seconds of invulnerability after being hit
     private int numShots = 1;
 
     public PlayerManager() {
         player = new Rectangle();
         player.width = GameConstants.PLAYER_WIDTH;
         player.height = GameConstants.PLAYER_HEIGHT;
-        player.x = GameConstants.PLAYER_INITIAL_X;
+        player.x = GameConstants.SCREEN_WIDTH/2 - player.width/2;
         player.y = GameConstants.PLAYER_INITIAL_Y;
         bullets = new Array<Rectangle>();
+        lives = GameConstants.PLAYER_DEFAULT_LIFE;
+        invulnerabilityTimer = 0;
     }
 
     public void update(float delta) {
+        // Update invulnerability timer
+        if (invulnerabilityTimer > 0) {
+            invulnerabilityTimer -= delta;
+        }
+
         // Handle player movement
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
             player.x -= GameConstants.PLAYER_SPEED * delta;
@@ -34,7 +44,7 @@ public class PlayerManager {
 
         // Keep player within screen bounds
         if (player.x < 0) player.x = 0;
-        if (player.x + player.width > GameConstants.SCREEN_WIDTH) {
+        if (player.x > GameConstants.SCREEN_WIDTH - player.width) {
             player.x = GameConstants.SCREEN_WIDTH - player.width;
         }
 
@@ -80,14 +90,24 @@ public class PlayerManager {
     }
 
     public void render(ShapeRenderer shapeRenderer) {
-        // Draw player
-        shapeRenderer.setColor(Color.BLUE);
-        shapeRenderer.rect(player.x, player.y, player.width, player.height);
+        // Draw player with blinking effect when invulnerable
+        if (invulnerabilityTimer <= 0 || (int)(invulnerabilityTimer * 10) % 2 == 0) {
+            shapeRenderer.setColor(Color.BLUE);
+            shapeRenderer.rect(player.x, player.y, player.width, player.height);
+        }
 
         // Draw bullets
         shapeRenderer.setColor(Color.YELLOW);
         for (Rectangle bullet : bullets) {
             shapeRenderer.rect(bullet.x, bullet.y, bullet.width, bullet.height);
+        }
+
+        // Draw life indicators in the top-left corner
+        shapeRenderer.setColor(Color.RED);
+        for (int i = 0; i < lives; i++) {
+            float x = 10 + i * (GameConstants.PLAYER_WIDTH * 0.5f + 5);
+            float y = GameConstants.SCREEN_HEIGHT - 30;
+            shapeRenderer.rect(x, y, GameConstants.PLAYER_WIDTH * 0.5f, GameConstants.PLAYER_HEIGHT * 0.5f);
         }
     }
 
@@ -95,14 +115,35 @@ public class PlayerManager {
         return player;
     }
 
+    public Array<Rectangle> getBullets() {
+        return bullets;
+    }
+
     public void reset() {
-        player.x = GameConstants.PLAYER_INITIAL_X;
+        player.x = GameConstants.SCREEN_WIDTH/2 - player.width/2;
         player.y = GameConstants.PLAYER_INITIAL_Y;
         bullets.clear();
+        lives = GameConstants.PLAYER_DEFAULT_LIFE;
+        invulnerabilityTimer = 0;
         numShots = 1;
     }
 
-    public Array<Rectangle> getBullets() {
-        return bullets;
+    public boolean isInvulnerable() {
+        return invulnerabilityTimer > 0;
+    }
+
+    public void hit() {
+        if (!isInvulnerable()) {
+            lives--;
+            invulnerabilityTimer = INVULNERABILITY_DURATION;
+        }
+    }
+
+    public boolean isAlive() {
+        return lives > 0;
+    }
+
+    public int getLives() {
+        return lives;
     }
 }
