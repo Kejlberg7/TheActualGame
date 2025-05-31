@@ -35,8 +35,8 @@ public class GateManager {
 
     private void spawnGatePair() {
         // Spawn a pair of gates, one positive and one negative
-        float leftX = 0; // Left edge of first pane
-        float rightX = GameConstants.PANE_WIDTH; // Left edge of second pane
+        float leftX = 0; // Start of first pane
+        float rightX = GameConstants.PANE_WIDTH + GameConstants.PANE_SEPARATOR_WIDTH; // Start of second pane
         boolean leftIsPositive = Math.random() < 0.5;
 
         // Create left gate
