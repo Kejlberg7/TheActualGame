@@ -79,7 +79,12 @@ public class GameScreen implements Screen {
             Rectangle player = playerManager.getPlayer();
             for (Gate gate : gateManager.getGates()) {
                 if (!gate.isUsed() && gate.rect.overlaps(player)) {
-                    playerManager.adjustShots(gate.isPositive());
+                    // Randomly choose between adjusting shot count or shooting speed
+                    if (Math.random() < 0.5) {
+                        playerManager.adjustShotCount(gate.isPositive());
+                    } else {
+                        playerManager.adjustShootingSpeed(gate.isPositive());
+                    }
                     gate.setUsed();
                 }
             }

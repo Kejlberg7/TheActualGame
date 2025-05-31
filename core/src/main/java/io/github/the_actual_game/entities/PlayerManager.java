@@ -12,12 +12,13 @@ import io.github.the_actual_game.constants.LevelConfig;
 public class PlayerManager {
     private Rectangle player;
     private Array<Rectangle> bullets;
-    private boolean spacePressedLastFrame = false;
     private int lives;
     private float invulnerabilityTimer;
     private static final float INVULNERABILITY_DURATION = 2.0f; // 2 seconds of invulnerability after being hit
-    private int numShots = 1;
     private LevelConfig currentLevelConfig;
+    private float shootingTimer = 0;
+    private float currentShootingInterval;
+    private int currentShotCount;
 
     public PlayerManager() {
         player = new Rectangle();
@@ -28,6 +29,8 @@ public class PlayerManager {
         bullets = new Array<Rectangle>();
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
+        currentShootingInterval = GameConstants.DEFAULT_SHOOTING_INTERVAL;
+        currentShotCount = GameConstants.DEFAULT_SHOT_COUNT;
         setLevel(0); // Start at level 1 (index 0)
     }
 
@@ -63,37 +66,53 @@ public class PlayerManager {
                 bullets.removeIndex(i);
             }
         }
+
+        // Handle auto-shooting
+        shootingTimer += delta;
+        if (shootingTimer >= currentShootingInterval) {
+            shoot();
+            shootingTimer = 0;
+        }
+    }
+
+    private void shoot() {
+        float totalWidth = (currentShotCount - 1) * GameConstants.MULTI_SHOT_SPREAD;
+        float startX = player.x + player.width / 2 - totalWidth / 2;
+
+        for (int i = 0; i < currentShotCount; i++) {
+            Rectangle bullet = new Rectangle();
+            bullet.width = GameConstants.BULLET_WIDTH;
+            bullet.height = GameConstants.BULLET_HEIGHT;
+            bullet.x = startX + (i * GameConstants.MULTI_SHOT_SPREAD);
+            bullet.y = player.y + player.height;
+            bullets.add(bullet);
+        }
+    }
+
+    public void adjustShootingSpeed(boolean increase) {
+        float adjustment = 0.1f; // Adjust shooting interval by 0.1 seconds
+        if (increase) {
+            // Faster shooting = lower interval
+            currentShootingInterval = Math.max(GameConstants.MIN_SHOOTING_INTERVAL, 
+                                           currentShootingInterval - adjustment);
+        } else {
+            // Slower shooting = higher interval
+            currentShootingInterval = Math.min(GameConstants.MAX_SHOOTING_INTERVAL, 
+                                           currentShootingInterval + adjustment);
+        }
+    }
+
+    public void adjustShotCount(boolean increase) {
+        if (increase) {
+            currentShotCount = Math.min(currentShotCount + 1, GameConstants.MAX_SHOT_COUNT);
+        } else {
+            currentShotCount = Math.max(currentShotCount - 1, GameConstants.MIN_SHOT_COUNT);
+        }
     }
 
     public boolean handleShooting() {
-        boolean spacePressed = Gdx.input.isKeyPressed(Input.Keys.SPACE);
-        boolean shotFired = false;
-        
-        if (spacePressed && !spacePressedLastFrame) {
-            // Fire multiple bullets based on numShots
-            float spacing = 8f; // Space between multiple shots
-            float startX = player.x + player.width / 2 - (numShots * spacing) / 2;
-            
-            for (int i = 0; i < numShots; i++) {
-                Rectangle bullet = new Rectangle();
-                bullet.width = GameConstants.BULLET_WIDTH;
-                bullet.height = GameConstants.BULLET_HEIGHT;
-                bullet.x = startX + (i * spacing);
-                bullet.y = player.y + player.height;
-                bullets.add(bullet);
-            }
-            shotFired = true;
-        }
-        spacePressedLastFrame = spacePressed;
-        return shotFired;
-    }
-
-    public void adjustShots(boolean increase) {
-        if (increase) {
-            numShots = Math.min(numShots + 1, GameConstants.MAX_SHOTS);
-        } else {
-            numShots = Math.max(numShots - 1, GameConstants.MIN_SHOTS);
-        }
+        // This method is now only used to tell the game screen if a shot was fired this frame
+        return shootingTimer == 0;
     }
 
     public void render(ShapeRenderer shapeRenderer) {
@@ -116,6 +135,14 @@ public class PlayerManager {
             float y = GameConstants.SCREEN_HEIGHT - 30;
             shapeRenderer.rect(x, y, GameConstants.PLAYER_WIDTH * 0.5f, GameConstants.PLAYER_HEIGHT * 0.5f);
         }
+
+        // Draw shot count indicator in the top-right corner
+        shapeRenderer.setColor(Color.YELLOW);
+        for (int i = 0; i < currentShotCount; i++) {
+            float x = GameConstants.SCREEN_WIDTH - 30 - i * (GameConstants.BULLET_WIDTH + 5);
+            float y = GameConstants.SCREEN_HEIGHT - 30;
+            shapeRenderer.rect(x, y, GameConstants.BULLET_WIDTH, GameConstants.BULLET_HEIGHT);
+        }
     }
 
     public Rectangle getPlayer() {
@@ -132,7 +159,10 @@ public class PlayerManager {
         bullets.clear();
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
-        numShots = 1;
+        shootingTimer = 0;
+        currentShootingInterval = GameConstants.DEFAULT_SHOOTING_INTERVAL;
+        currentShotCount = GameConstants.DEFAULT_SHOT_COUNT;
+        setLevel(0);
     }
 
     public boolean isInvulnerable() {
