@@ -62,6 +62,7 @@ public class EnemyManager {
         shapeRenderer.setColor(Color.RED);
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) continue;
+            shapeRenderer.setColor(enemy.getColor());
             shapeRenderer.rect(enemy.rect.x, enemy.rect.y, enemy.rect.width, enemy.rect.height);
         }
     }
