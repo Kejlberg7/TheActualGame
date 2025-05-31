@@ -22,6 +22,10 @@ public class EnemyManager {
     }
 
     public void setLevel(int level) {
+        // Ensure level is within bounds
+        if (level < 0) level = 0;
+        if (level >= GameConstants.MAX_LEVELS) level = GameConstants.MAX_LEVELS - 1;
+        
         currentLevel = level;
         currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
         remainingEnemies = currentLevelConfig.getEnemyCount();

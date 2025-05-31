@@ -21,6 +21,10 @@ public class GateManager {
     }
 
     public void setLevel(int level) {
+        // Ensure level is within bounds
+        if (level < 0) level = 0;
+        if (level >= GameConstants.MAX_LEVELS) level = GameConstants.MAX_LEVELS - 1;
+        
         currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
         gates.clear();
         spawnTimer = 0;
