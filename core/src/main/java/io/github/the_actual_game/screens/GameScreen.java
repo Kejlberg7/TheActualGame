@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.audio.Sound;
 
 public class GameScreen implements Screen {
     private OrthographicCamera camera;
@@ -23,6 +24,7 @@ public class GameScreen implements Screen {
     private static final float BULLET_HEIGHT = 20;
     private static final float BULLET_SPEED = 600;
     private boolean spacePressedLastFrame = false;
+    private Sound laserSound;
 
     public GameScreen() {
         camera = new OrthographicCamera();
@@ -42,6 +44,8 @@ public class GameScreen implements Screen {
         spawnEnemies();
         // Initialize bullets array
         bullets = new Array<Rectangle>();
+        // Load laser sound
+        laserSound = Gdx.audio.newSound(Gdx.files.internal("laser-gun-81720.mp3"));
     }
 
     private void spawnEnemies() {
@@ -82,6 +86,10 @@ public class GameScreen implements Screen {
             bullet.x = player.x + player.width / 2 - BULLET_WIDTH / 2;
             bullet.y = player.y + player.height;
             bullets.add(bullet);
+            // Play laser sound
+            if (laserSound != null) {
+                laserSound.play();
+            }
         }
         spacePressedLastFrame = spacePressed;
 
@@ -140,5 +148,8 @@ public class GameScreen implements Screen {
     @Override
     public void dispose() {
         shapeRenderer.dispose();
+        if (laserSound != null) {
+            laserSound.dispose();
+        }
     }
 }
