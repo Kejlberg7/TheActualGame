@@ -15,6 +15,9 @@ public class EnemyManager {
     private int remainingEnemies;
     private int currentLevel;
     private boolean bossSpawned;
+    private float spawnTimer;
+    private static final float MIN_SPAWN_INTERVAL = 2.5f;
+    private static final float MAX_SPAWN_INTERVAL = 6.0f;
 
     public EnemyManager() {
         enemies = new Array<Enemy>();
@@ -31,17 +34,13 @@ public class EnemyManager {
         remainingEnemies = currentLevelConfig.getEnemyCount();
         enemies.clear();
         bossSpawned = false;
-        spawnInitialEnemies();
+        spawnTimer = 0;
+        // Spawn first enemy immediately
+        spawnNewEnemy();
     }
 
     private void spawnInitialEnemies() {
-        // Spawn boss as first enemy
-        float x = GameConstants.SCREEN_WIDTH / 2 - (GameConstants.ENEMY_WIDTH * 2); // Center the boss
-        float y = GameConstants.ENEMY_INITIAL_Y;
-        enemies.add(new BossEnemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
-                                currentLevelConfig.getEnemyLife()));
-        bossSpawned = true;
-        remainingEnemies--;
+        // No longer needed as we spawn enemies gradually
     }
 
     private void spawnNewEnemy() {
@@ -53,21 +52,34 @@ public class EnemyManager {
         float x = MathUtils.random(minX, maxX);
         float y = GameConstants.SCREEN_HEIGHT; // Start at the top of the screen
         
-        enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
-                            currentLevelConfig.getEnemyLife()));
+        if (!bossSpawned && remainingEnemies == 1) {
+            // Spawn boss as the last enemy
+            x = GameConstants.SCREEN_WIDTH / 2 - (GameConstants.ENEMY_WIDTH * 2); // Center the boss
+            enemies.add(new BossEnemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
+                                    currentLevelConfig.getEnemyLife()));
+            bossSpawned = true;
+        } else {
+            enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
+                                currentLevelConfig.getEnemyLife()));
+        }
         remainingEnemies--;
     }
 
     public void update(float delta, Rectangle player) {
+        // Update spawn timer
+        spawnTimer += delta;
+        
+        // Randomly spawn new enemies
+        if (remainingEnemies > 0 && spawnTimer >= MathUtils.random(MIN_SPAWN_INTERVAL, MAX_SPAWN_INTERVAL)) {
+            spawnNewEnemy();
+            spawnTimer = 0;
+        }
+
         // Remove enemies that are no longer needed
         for (int i = enemies.size - 1; i >= 0; i--) {
             Enemy enemy = enemies.get(i);
             if (!enemy.isAlive() || enemy.rect.y + enemy.rect.height < 0) {
                 enemies.removeIndex(i);
-                // Only spawn a new enemy if we have remaining enemies for this level
-                if (remainingEnemies > 0) {
-                    spawnNewEnemy();
-                }
             }
         }
 
