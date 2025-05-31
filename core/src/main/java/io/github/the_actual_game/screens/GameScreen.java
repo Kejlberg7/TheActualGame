@@ -10,6 +10,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 
 import io.github.the_actual_game.entities.EnemyManager;
 import com.badlogic.gdx.audio.Sound;
@@ -38,9 +39,10 @@ public class GameScreen implements Screen {
         camera.setToOrtho(false, 1500, 900);
 
         shapeRenderer = new ShapeRenderer();
-batch = new SpriteBatch();
+        batch = new SpriteBatch();
         font = new BitmapFont();
         font.getData().setScale(2);
+        enemyManager = new EnemyManager();
 
         // Create player at the bottom center of the screen
         player = new Rectangle();
@@ -90,31 +92,31 @@ batch = new SpriteBatch();
             }
 
             // Handle shooting
-        boolean spacePressed = Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.SPACE);
-        if (spacePressed && !spacePressedLastFrame) {
-            Rectangle bullet = new Rectangle();
-            bullet.width = BULLET_WIDTH;
-            bullet.height = BULLET_HEIGHT;
-            bullet.x = player.x + player.width / 2 - BULLET_WIDTH / 2;
-            bullet.y = player.y + player.height;
-            bullets.add(bullet);
-            // Play laser sound
-            if (laserSound != null) {
-                laserSound.play();
+            boolean spacePressed = Gdx.input.isKeyPressed(com.badlogic.gdx.Input.Keys.SPACE);
+            if (spacePressed && !spacePressedLastFrame) {
+                Rectangle bullet = new Rectangle();
+                bullet.width = BULLET_WIDTH;
+                bullet.height = BULLET_HEIGHT;
+                bullet.x = player.x + player.width / 2 - BULLET_WIDTH / 2;
+                bullet.y = player.y + player.height;
+                bullets.add(bullet);
+                // Play laser sound
+                if (laserSound != null) {
+                    laserSound.play();
+                }
             }
-        }
-        spacePressedLastFrame = spacePressed;
+            spacePressedLastFrame = spacePressed;
 
-        // Update bullets
-        for (int i = bullets.size - 1; i >= 0; i--) {
-            Rectangle bullet = bullets.get(i);
-            bullet.y += BULLET_SPEED * delta;
-            if (bullet.y > 900) {
-                bullets.removeIndex(i);
+            // Update bullets
+            for (int i = bullets.size - 1; i >= 0; i--) {
+                Rectangle bullet = bullets.get(i);
+                bullet.y += BULLET_SPEED * delta;
+                if (bullet.y > 900) {
+                    bullets.removeIndex(i);
+                }
             }
-        }
 
-        // Keep player within screen bounds
+            // Keep player within screen bounds
             if (player.x < 0) player.x = 0;
             if (player.x > 1500 - player.width) player.x = 1500 - player.width;
 
