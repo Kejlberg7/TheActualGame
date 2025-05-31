@@ -12,7 +12,7 @@ public class Gate {
     public Gate(float x, float y, float width, float height, boolean isPositive) {
         this.rect = new Rectangle(x, y, width, height);
         this.isPositive = isPositive;
-        this.color = isPositive ? Color.GREEN : Color.RED;
+        this.color = isPositive ? new Color(0.3f, 0.3f, 1f, 1f) : new Color(1f, 0.7f, 0.7f, 1f); // Blue for positive, light red for negative
         this.used = false;
     }
 
