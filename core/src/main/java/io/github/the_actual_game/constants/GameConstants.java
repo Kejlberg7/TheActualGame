@@ -17,9 +17,9 @@ public class GameConstants {
     public static final float PLAYER_INITIAL_Y = 50;
     public static final float PLAYER_INITIAL_X = PANE_WIDTH / 4;  // Start in the left pane
     public static final int PLAYER_DEFAULT_LIFE = 3; // Number of lives the player starts with
-    public static final float DEFAULT_SHOOTING_INTERVAL = 0.5f;
-    public static final float MIN_SHOOTING_INTERVAL = 0.1f;
-    public static final float MAX_SHOOTING_INTERVAL = 1.0f;
+    public static final float DEFAULT_SHOOTING_INTERVAL = 0.1f;
+    public static final float MIN_SHOOTING_INTERVAL = 0.05f;
+    public static final float MAX_SHOOTING_INTERVAL = 0.5f;
     public static final int MIN_SHOT_COUNT = 1;
     public static final int MAX_SHOT_COUNT = 5;
     public static final int DEFAULT_SHOT_COUNT = 1;
