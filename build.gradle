@@ -27,3 +27,9 @@ test {
 application {
     mainClass = 'com.theactualgame.Main'
 } 
+
+// create task that runs the main class
+task runMain(type: JavaExec) {
+    main = 'com.theactualgame.Main'
+    classpath = sourceSets.main.runtimeClasspath
+}
