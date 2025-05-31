@@ -79,11 +79,10 @@ public class GameScreen implements Screen {
             Rectangle player = playerManager.getPlayer();
             for (Gate gate : gateManager.getGates()) {
                 if (!gate.isUsed() && gate.rect.overlaps(player)) {
-                    // Randomly choose between adjusting shot count or shooting speed
-                    if (Math.random() < 0.5) {
-                        playerManager.adjustShotCount(gate.isPositive());
-                    } else {
+                    if (gate.getType() == Gate.GateType.SPEED) {
                         playerManager.adjustShootingSpeed(gate.isPositive());
+                    } else {
+                        playerManager.adjustShotCount(gate.isPositive());
                     }
                     gate.setUsed();
                 }
@@ -151,8 +150,8 @@ public class GameScreen implements Screen {
         // Draw enemies
         enemyManager.render(shapeRenderer);
 
-        // Draw gates
-        gateManager.render(shapeRenderer);
+        // Draw gates (rectangles only)
+        gateManager.render(shapeRenderer, batch, font);
 
         shapeRenderer.end();
 

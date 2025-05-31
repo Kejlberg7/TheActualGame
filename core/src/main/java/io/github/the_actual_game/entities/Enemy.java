@@ -5,9 +5,9 @@ import com.badlogic.gdx.math.Rectangle;
 
 public class Enemy {
     public Rectangle rect;
-    private int life;
-    private int initialLife;
-    private Color color;
+    protected int life;
+    protected int initialLife;
+    protected Color color;
 
     public Enemy(float x, float y, float width, float height, int life) {
         this.rect = new Rectangle(x, y, width, height);
