@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.entities.Enemy;
+import com.badlogic.gdx.math.MathUtils;
 
 public class EnemyManager {
     private Array<Enemy> enemies;
@@ -16,29 +17,39 @@ public class EnemyManager {
     }
 
     private void spawnInitialEnemies() {
-        // Spawn enemies for each pane
-        for (int pane = 0; pane < GameConstants.NUMBER_OF_PANES; pane++) {
-            float paneOffset = pane * GameConstants.PANE_WIDTH;
-            
-            // Spawn enemies within this pane
-            for (int i = 0; i < GameConstants.ENEMY_COUNT_PER_PANE; i++) {
-                float x = paneOffset + GameConstants.ENEMY_INITIAL_X + i * GameConstants.ENEMY_SPACING;
-                float y = GameConstants.ENEMY_INITIAL_Y;
-                enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, GameConstants.ENEMY_DEFAULT_LIFE));
-            }
+        for (int i = 0; i < GameConstants.ENEMY_COUNT; i++) {
+            float x = GameConstants.ENEMY_INITIAL_X + i * GameConstants.ENEMY_SPACING;
+            float y = GameConstants.ENEMY_INITIAL_Y;
+            enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, GameConstants.ENEMY_DEFAULT_LIFE));
         }
     }
 
+    private void spawnNewEnemy() {
+        // Generate a random x position within screen bounds
+        float minX = GameConstants.ENEMY_WIDTH;
+        float maxX = GameConstants.SCREEN_WIDTH - GameConstants.ENEMY_WIDTH;
+        float x = MathUtils.random(minX, maxX);
+        float y = GameConstants.SCREEN_HEIGHT; // Start at the top of the screen
+        
+        enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, GameConstants.ENEMY_DEFAULT_LIFE));
+    }
+
     public void update(float delta, Rectangle player) {
+        // Remove enemies that are no longer needed
+        for (int i = enemies.size - 1; i >= 0; i--) {
+            Enemy enemy = enemies.get(i);
+            if (!enemy.isAlive() || enemy.rect.y + enemy.rect.height < 0) {
+                enemies.removeIndex(i);
+                // Spawn a new enemy to replace the one that was removed
+                spawnNewEnemy();
+            }
+        }
+
+        // Update remaining enemies
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) continue;
             // Move enemy downward
             enemy.rect.y -= GameConstants.ENEMY_SPEED * delta;
-            
-            // If enemy reaches bottom, move it back to top
-            if (enemy.rect.y + enemy.rect.height < 0) {
-                enemy.rect.y = GameConstants.SCREEN_HEIGHT;
-            }
         }
     }
 
@@ -53,13 +64,6 @@ public class EnemyManager {
     }
 
     public void render(ShapeRenderer shapeRenderer) {
-        // Draw pane separator
-        shapeRenderer.setColor(Color.GRAY);
-        float separatorX = GameConstants.PANE_WIDTH - GameConstants.PANE_SEPARATOR_WIDTH / 2;
-        shapeRenderer.rect(separatorX, 0, GameConstants.PANE_SEPARATOR_WIDTH, GameConstants.SCREEN_HEIGHT);
-
-        // Draw enemies
-        shapeRenderer.setColor(Color.RED);
         for (Enemy enemy : enemies) {
             if (!enemy.isAlive()) continue;
             shapeRenderer.setColor(enemy.getColor());

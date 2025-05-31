@@ -94,7 +94,6 @@ public class GameScreen implements Screen {
                 // Check if enemy has passed the player's y position
                 if (enemy.rect.y + enemy.rect.height < playerManager.getPlayer().y) {
                     playerManager.hit();
-                    enemy.rect.y = GameConstants.SCREEN_HEIGHT; // Move enemy back to top
                 }
                 
                 // Check collision with player
