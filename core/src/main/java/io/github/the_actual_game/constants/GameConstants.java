@@ -35,7 +35,7 @@ public class GameConstants {
     public static final float BULLET_SPEED = 400;
 
     // Gate constants
-    public static final float GATE_WIDTH = PANE_WIDTH / 2; // Fill half the pane width
+    public static final float GATE_WIDTH = PANE_WIDTH; // Fill entire pane width
     public static final float GATE_HEIGHT = 8; // Make them slim
     public static final float GATE_SPEED = 150;
     public static final int GATE_SPAWN_INTERVAL = 5; // Seconds between gate spawns
