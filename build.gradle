@@ -8,7 +8,7 @@ java {
     }
 }
 
-group = 'com.rasmushanschristensen.theactualgame'
+group = 'com.theactualgame'
 version = '1.0-SNAPSHOT'
 
 repositories {
