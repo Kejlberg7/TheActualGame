@@ -9,11 +9,14 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.utils.Array;
 
 import io.github.the_actual_game.entities.EnemyManager;
 import io.github.the_actual_game.entities.PlayerManager;
 import io.github.the_actual_game.constants.GameConstants;
 import com.badlogic.gdx.audio.Sound;
+import io.github.the_actual_game.entities.Enemy;
 
 public class GameScreen implements Screen {
     private OrthographicCamera camera;
@@ -63,6 +66,21 @@ public class GameScreen implements Screen {
             enemyManager.update(delta, playerManager.getPlayer());
             if (enemyManager.checkCollisions(playerManager.getPlayer())) {
                 gameOver = true;
+            }
+
+            // Bullet-enemy collision detection
+            Array<Rectangle> bullets = playerManager.getBullets();
+            Array<Enemy> enemies = enemyManager.getEnemies();
+            for (int i = bullets.size - 1; i >= 0; i--) {
+                Rectangle bullet = bullets.get(i);
+                for (Enemy enemy : enemies) {
+                    if (!enemy.isAlive()) continue;
+                    if (enemy.rect.overlaps(bullet)) {
+                        enemy.hit(1); // Damage is 1 for now
+                        bullets.removeIndex(i);
+                        break; // Bullet can only hit one enemy
+                    }
+                }
             }
         }
 

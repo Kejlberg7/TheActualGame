@@ -19,6 +19,7 @@ public class GameConstants {
     public static final int ENEMY_COUNT = 5;
     public static final float ENEMY_SPACING = 300;
     public static final float ENEMY_INITIAL_X = 100;
+    public static final int ENEMY_DEFAULT_LIFE = 1; // Default life for each enemy/target
 
     // Bullet constants
     public static final float BULLET_WIDTH = 10;
