@@ -14,6 +14,7 @@ public class EnemyManager {
     private LevelConfig currentLevelConfig;
     private int remainingEnemies;
     private int currentLevel;
+    private boolean bossSpawned;
 
     public EnemyManager() {
         enemies = new Array<Enemy>();
@@ -25,18 +26,18 @@ public class EnemyManager {
         currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
         remainingEnemies = currentLevelConfig.getEnemyCount();
         enemies.clear();
+        bossSpawned = false;
         spawnInitialEnemies();
     }
 
     private void spawnInitialEnemies() {
-        int initialSpawn = Math.min(4, remainingEnemies); // Spawn up to 4 enemies initially
-        for (int i = 0; i < initialSpawn; i++) {
-            float x = GameConstants.ENEMY_INITIAL_X + i * GameConstants.ENEMY_SPACING;
-            float y = GameConstants.ENEMY_INITIAL_Y;
-            enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
+        // Spawn boss as first enemy
+        float x = GameConstants.SCREEN_WIDTH / 2 - (GameConstants.ENEMY_WIDTH * 2); // Center the boss
+        float y = GameConstants.ENEMY_INITIAL_Y;
+        enemies.add(new BossEnemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
                                 currentLevelConfig.getEnemyLife()));
-            remainingEnemies--;
-        }
+        bossSpawned = true;
+        remainingEnemies--;
     }
 
     private void spawnNewEnemy() {
