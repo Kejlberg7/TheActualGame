@@ -3,16 +3,20 @@ package io.github.the_actual_game.screens;
 import java.util.List;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.PerspectiveCamera;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
+import com.badlogic.gdx.graphics.g3d.environment.DirectionalLight;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 
 import io.github.the_actual_game.constants.GameConstants;
@@ -21,12 +25,14 @@ import io.github.the_actual_game.entities.EnemyManager;
 import io.github.the_actual_game.entities.Gate;
 import io.github.the_actual_game.entities.GateManager;
 import io.github.the_actual_game.entities.PlayerManager;
+import io.github.the_actual_game.utils.ModelManager;
 
 public class GameScreen implements Screen {
-    private OrthographicCamera camera;
-    private ShapeRenderer shapeRenderer;
+    private PerspectiveCamera camera;
+    private ModelBatch modelBatch;
+    private Environment environment;
+    private SpriteBatch spriteBatch;
     private BitmapFont font;
-    private SpriteBatch batch;
     private EnemyManager enemyManager;
     private PlayerManager playerManager;
     private GateManager gateManager;
@@ -38,19 +44,39 @@ public class GameScreen implements Screen {
     private String currentName = "";
 
     public GameScreen() {
-        camera = new OrthographicCamera();
-        camera.setToOrtho(false, GameConstants.SCREEN_WIDTH, GameConstants.SCREEN_HEIGHT);
+        setupCamera();
+        setupEnvironment();
+        setupRendering();
+        setupGame();
+    }
 
-        shapeRenderer = new ShapeRenderer();
-        batch = new SpriteBatch();
+    private void setupCamera() {
+        camera = new PerspectiveCamera(35, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera.position.set(GameConstants.SCREEN_WIDTH/2 - 150, GameConstants.SCREEN_HEIGHT/3, 1200);
+        camera.lookAt(GameConstants.SCREEN_WIDTH/2 - 25, GameConstants.SCREEN_HEIGHT/2, 0);
+        camera.near = 1f;
+        camera.far = 2000f;
+        camera.update();
+    }
+
+    private void setupEnvironment() {
+        environment = new Environment();
+        environment.set(new ColorAttribute(ColorAttribute.AmbientLight, 0.4f, 0.4f, 0.4f, 1f));
+        environment.add(new DirectionalLight().set(0.8f, 0.8f, 0.8f, -1f, -0.8f, -0.2f));
+    }
+
+    private void setupRendering() {
+        modelBatch = new ModelBatch();
+        spriteBatch = new SpriteBatch();
         font = new BitmapFont();
         font.getData().setScale(2);
+    }
 
+    private void setupGame() {
+        ModelManager.initialize();
         enemyManager = new EnemyManager();
         playerManager = new PlayerManager();
         gateManager = new GateManager();
-
-        // Load laser sound
         laserSound = Gdx.audio.newSound(Gdx.files.internal("laser-gun-81720.mp3"));
         highScore = GameStateManager.loadHighScore(SCORE_FILE);
         gameStateManager = new GameStateManager();
@@ -58,220 +84,150 @@ public class GameScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        // Clear screen
+        // Clear screen with a dark blue color
         Gdx.gl.glClearColor(0.15f, 0.15f, 0.2f, 1);
-        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+        Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT | GL20.GL_DEPTH_BUFFER_BIT);
+
+        // Handle restart input
+        if (Gdx.input.isKeyJustPressed(Input.Keys.SPACE)) {
+            if (!gameStateManager.isPlaying()) {
+                if (gameStateManager.isLevelComplete()) {
+                    System.out.println("Starting next level");
+                    gameStateManager.nextLevel();
+                    playerManager.setLevel(gameStateManager.getCurrentLevel() - 1);
+                    enemyManager.setLevel(gameStateManager.getCurrentLevel() - 1);
+                    gateManager.setLevel(gameStateManager.getCurrentLevel() - 1);
+                } else if (gameStateManager.isResult() || gameStateManager.isGameOver()) {
+                    System.out.println("Restarting game from game over");
+                    restartGame();
+                }
+            }
+        }
 
         // Update camera
         camera.update();
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        batch.setProjectionMatrix(camera.combined);
 
         if (gameStateManager.isPlaying()) {
-            // Update player and handle shooting
-            playerManager.update(delta);
-            if (playerManager.handleShooting() && laserSound != null) {
-                laserSound.play();
-            }
-
-            // Update gates and check for collisions
-            gateManager.update(delta, playerManager.getBullets());
-            Rectangle player = playerManager.getPlayer();
-            for (Gate gate : gateManager.getGates()) {
-                if (!gate.isUsed() && gate.rect.overlaps(player)) {
-                    int powerLevel = gate.getPowerLevel();
-                    if (gate.getType() == Gate.GateType.SPEED) {
-                        playerManager.adjustShootingSpeed(powerLevel);
-                    } else {
-                        playerManager.adjustShotCount(powerLevel);
-                    }
-                    gate.setUsed();
-                }
-            }
-
-            // Update enemies and check collisions
-            enemyManager.update(delta, playerManager.getPlayer());
-
-            // Check if any enemy has passed the player or collided with them
-            Array<Enemy> enemies = enemyManager.getEnemies();
-            for (Enemy enemy : enemies) {
-                if (!enemy.isAlive()) continue;
-
-                // Check if enemy has passed the player's y position
-                if (enemy.rect.y + enemy.rect.height < playerManager.getPlayer().y) {
-                    playerManager.hit();
-                }
-
-                // Check collision with player
-                if (!playerManager.isInvulnerable() && enemy.rect.overlaps(playerManager.getPlayer())) {
-                    playerManager.hit();
-                }
-            }
-
-            // Check if player has lost all lives
-            if (!playerManager.isAlive()) {
-                gameStateManager.setGameOver(true);
-                if (score > highScore) {
-                    highScore = score;
-                    gameStateManager.setEnterName();
-                } else {
-                    gameStateManager.setResult();
-                }
-            }
-
-            // Check if level is complete
-            if (enemyManager.isLevelComplete()) {
-                gameStateManager.setLevelComplete();
-            }
-
-            // Bullet-enemy collision detection
-            Array<Rectangle> bullets = playerManager.getBullets();
-            for (int i = bullets.size - 1; i >= 0; i--) {
-                Rectangle bullet = bullets.get(i);
-                for (Enemy enemy : enemies) {
-                    if (!enemy.isAlive()) continue;
-                    if (enemy.rect.overlaps(bullet)) {
-                        enemy.hit(1);
-                        if (!enemy.isAlive()) {
-                            score += 10;
-                        }
-                        bullets.removeIndex(i);
-                        break;
-                    }
-                }
-            }
+            updateGameLogic(delta);
         }
 
-        // Draw shapes
-        shapeRenderer.begin(ShapeType.Filled);
-
-        // Draw player and bullets
-        playerManager.render(shapeRenderer);
-
-        // Draw enemies
-        enemyManager.render(shapeRenderer);
-
-        // Draw gates (rectangles only)
-        gateManager.render(shapeRenderer, batch, font);
-
-        shapeRenderer.end();
-
-        // Draw score and other UI elements
-        batch.begin();
+        // 3D Rendering
+        modelBatch.begin(camera);
         if (gameStateManager.isPlaying()) {
-            font.setColor(Color.WHITE);
-            String scoreText = "Score: " + score;
-            font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 30);
-            
-            // Draw level indicator
-            String levelText = "Level: " + gameStateManager.getCurrentLevel();
-            font.draw(batch, levelText, 10, GameConstants.SCREEN_HEIGHT - 60);
-        } else if (gameStateManager.isLevelComplete()) {
-            font.setColor(Color.GREEN);
-            String levelCompleteText = "Level " + gameStateManager.getCurrentLevel() + " Complete!";
-            float levelCompleteWidth = font.draw(batch, levelCompleteText, 0, 0).width;
-            font.draw(batch, levelCompleteText, GameConstants.SCREEN_WIDTH/2 - levelCompleteWidth/2, GameConstants.SCREEN_HEIGHT/2);
+            playerManager.render(modelBatch, environment);
+            enemyManager.render(modelBatch, environment);
+            gateManager.render(modelBatch, environment);
+        }
+        modelBatch.end();
 
-            font.setColor(Color.WHITE);
-            String pressSpaceText = "Press SPACE to continue";
-            float pressSpaceWidth = font.draw(batch, pressSpaceText, 0, 0).width;
-            font.draw(batch, pressSpaceText, GameConstants.SCREEN_WIDTH/2 - pressSpaceWidth/2, GameConstants.SCREEN_HEIGHT/2 - 40);
+        // 2D UI Rendering
+        renderUI();
+    }
 
-            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
-                gameStateManager.nextLevel();
-                int newLevel = gameStateManager.getCurrentLevel() - 1; // Convert back to 0-based
-                enemyManager.setLevel(newLevel);
-                playerManager.setLevel(newLevel);
-                gateManager.setLevel(newLevel);
-            }
-        } else if (gameStateManager.isGameOver()) {
-            font.setColor(Color.RED);
-            String gameOverText = "GAME OVER - Press SPACE to restart";
-            float gameOverWidth = font.draw(batch, gameOverText, 0, 0).width;
-            font.draw(batch, gameOverText, GameConstants.SCREEN_WIDTH/2 - gameOverWidth/2, GameConstants.SCREEN_HEIGHT/2);
-            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
-                restartGame();
-            }
-        } else if (gameStateManager.isEnterName()) {
-            font.setColor(Color.GREEN);
-            String highScoreText = "NEW HIGH SCORE!";
-            float highScoreWidth = font.draw(batch, highScoreText, 0, 0).width;
-            font.draw(batch, highScoreText, GameConstants.SCREEN_WIDTH/2 - highScoreWidth/2, GameConstants.SCREEN_HEIGHT - 100);
+    private void updateGameLogic(float delta) {
+        playerManager.update(delta);
+        if (playerManager.handleShooting() && laserSound != null) {
+            laserSound.play();
+        }
 
-            font.setColor(Color.WHITE);
-            String scoreText = "Score: " + score;
-            float scoreWidth = font.draw(batch, scoreText, 0, 0).width;
-            font.draw(batch, scoreText, GameConstants.SCREEN_WIDTH/2 - scoreWidth/2, GameConstants.SCREEN_HEIGHT - 150);
+        gateManager.update(delta);
+        enemyManager.update(delta);
 
-            String enterNameText = "Enter your name:";
-            float enterNameWidth = font.draw(batch, enterNameText, 0, 0).width;
-            font.draw(batch, enterNameText, GameConstants.SCREEN_WIDTH/2 - enterNameWidth/2, GameConstants.SCREEN_HEIGHT - 200);
+        checkCollisions();
+        checkGameState();
+    }
 
-            String currentNameText = currentName;
-            float currentNameWidth = font.draw(batch, currentNameText, 0, 0).width;
-            font.draw(batch, currentNameText, GameConstants.SCREEN_WIDTH/2 - currentNameWidth/2, GameConstants.SCREEN_HEIGHT - 250);
+    private void checkCollisions() {
+        // Check collisions between game objects
+        playerManager.checkCollisions(enemyManager.getEnemies(), gateManager.getGates());
+        score += enemyManager.checkBulletCollisions(playerManager.getBullets());
+    }
 
-            String enterDoneText = "Press ENTER when done";
-            float enterDoneWidth = font.draw(batch, enterDoneText, 0, 0).width;
-            font.draw(batch, enterDoneText, GameConstants.SCREEN_WIDTH/2 - enterDoneWidth/2, GameConstants.SCREEN_HEIGHT - 300);
-
-            currentName = GameStateManager.handleNameInput(currentName);
-            if (GameStateManager.isNameEntryComplete()) {
-                GameStateManager.saveScoreWithName(SCORE_FILE, currentName, score);
+    private void checkGameState() {
+        if (!playerManager.isAlive()) {
+            gameStateManager.setGameOver(true);
+            if (score > highScore) {
+                highScore = score;
+                gameStateManager.setEnterName();
+            } else {
                 gameStateManager.setResult();
             }
-        } else if (gameStateManager.isResult()) {
-            font.setColor(Color.GREEN);
-            String gameOverText = "GAME OVER";
-            float gameOverWidth = font.draw(batch, gameOverText, 0, 0).width;
-            font.draw(batch, gameOverText, GameConstants.SCREEN_WIDTH/2 - gameOverWidth/2, GameConstants.SCREEN_HEIGHT - 100);
-
-            font.setColor(Color.WHITE);
-            String yourScoreText = "Your Score: " + score;
-            float yourScoreWidth = font.draw(batch, yourScoreText, 0, 0).width;
-            font.draw(batch, yourScoreText, GameConstants.SCREEN_WIDTH/2 - yourScoreWidth/2, GameConstants.SCREEN_HEIGHT - 150);
-
-            String highScoreText = "High Score: " + highScore;
-            float highScoreWidth = font.draw(batch, highScoreText, 0, 0).width;
-            font.draw(batch, highScoreText, GameConstants.SCREEN_WIDTH/2 - highScoreWidth/2, GameConstants.SCREEN_HEIGHT - 200);
-
-            // Display top scores
-            List<GameStateManager.ScoreEntry> topScores = GameStateManager.loadTopScores(SCORE_FILE);
-            font.setColor(Color.YELLOW);
-            String topScoresText = "Top Scores:";
-            float topScoresWidth = font.draw(batch, topScoresText, 0, 0).width;
-            font.draw(batch, topScoresText, GameConstants.SCREEN_WIDTH/2 - topScoresWidth/2, GameConstants.SCREEN_HEIGHT - 250);
-
-            int y = GameConstants.SCREEN_HEIGHT - 280;
-            for (GameStateManager.ScoreEntry entry : topScores) {
-                String scoreEntryText = entry.name + ": " + entry.score;
-                float scoreEntryWidth = font.draw(batch, scoreEntryText, 0, 0).width;
-                font.draw(batch, scoreEntryText, GameConstants.SCREEN_WIDTH/2 - scoreEntryWidth/2, y);
-                y -= 30;
-            }
-
-            font.setColor(Color.WHITE);
-            String restartText = "Press SPACE to restart";
-            float restartWidth = font.draw(batch, restartText, 0, 0).width;
-            font.draw(batch, restartText, GameConstants.SCREEN_WIDTH/2 - restartWidth/2, y - 30);
-            if (Gdx.input.isKeyJustPressed(com.badlogic.gdx.Input.Keys.SPACE)) {
-                restartGame();
-            }
         }
-        batch.end();
+
+        if (enemyManager.isLevelComplete()) {
+            gameStateManager.setLevelComplete();
+        }
+    }
+
+    private void renderUI() {
+        spriteBatch.begin();
+        if (gameStateManager.isPlaying()) {
+            renderGameUI();
+        } else if (gameStateManager.isLevelComplete()) {
+            renderLevelCompleteUI();
+        } else if (gameStateManager.isEnterName()) {
+            renderHighScoreUI();
+        } else if (gameStateManager.isResult()) {
+            renderResultUI();
+        }
+        spriteBatch.end();
+    }
+
+    private void renderGameUI() {
+        font.setColor(Color.WHITE);
+        font.draw(spriteBatch, "Score: " + score, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT - 30);
+        font.draw(spriteBatch, "Level: " + gameStateManager.getCurrentLevel(), 10, GameConstants.SCREEN_HEIGHT - 60);
+    }
+
+    private void renderLevelCompleteUI() {
+        font.setColor(Color.WHITE);
+        font.draw(spriteBatch, "Level Complete!", GameConstants.SCREEN_WIDTH/2 - 80, GameConstants.SCREEN_HEIGHT/2);
+        font.draw(spriteBatch, "Press SPACE to continue", GameConstants.SCREEN_WIDTH/2 - 100, GameConstants.SCREEN_HEIGHT/2 - 40);
+    }
+
+    private void renderHighScoreUI() {
+        font.setColor(Color.WHITE);
+        font.draw(spriteBatch, "New High Score!", GameConstants.SCREEN_WIDTH/2 - 80, GameConstants.SCREEN_HEIGHT/2);
+        font.draw(spriteBatch, "Score: " + score, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT/2 - 40);
+        font.draw(spriteBatch, "Press SPACE to restart", GameConstants.SCREEN_WIDTH/2 - 100, GameConstants.SCREEN_HEIGHT/2 - 80);
+    }
+
+    private void renderResultUI() {
+        font.setColor(Color.WHITE);
+        font.draw(spriteBatch, "Game Over!", GameConstants.SCREEN_WIDTH/2 - 60, GameConstants.SCREEN_HEIGHT/2);
+        font.draw(spriteBatch, "Score: " + score, GameConstants.SCREEN_WIDTH/2 - 50, GameConstants.SCREEN_HEIGHT/2 - 40);
+        font.draw(spriteBatch, "Press SPACE to restart", GameConstants.SCREEN_WIDTH/2 - 100, GameConstants.SCREEN_HEIGHT/2 - 80);
     }
 
     private void restartGame() {
+        System.out.println("Restarting game");
         gameStateManager.reset();
         playerManager.reset();
         enemyManager.reset();
         gateManager.reset();
         score = 0;
+        gameStateManager.setGameOver(false); // Ensure game is not in game over state
     }
 
     @Override
     public void resize(int width, int height) {
-        camera.setToOrtho(false, width, height);
+        // Maintain aspect ratio
+        float aspectRatio = (float)width / (float)height;
+        camera.viewportWidth = GameConstants.SCREEN_HEIGHT * aspectRatio;
+        camera.viewportHeight = GameConstants.SCREEN_HEIGHT;
+        camera.update();
+        spriteBatch.getProjectionMatrix().setToOrtho2D(0, 0, width, height);
+    }
+
+    @Override
+    public void dispose() {
+        modelBatch.dispose();
+        spriteBatch.dispose();
+        font.dispose();
+        if (laserSound != null) {
+            laserSound.dispose();
+        }
+        ModelManager.getInstance().dispose();
     }
 
     @Override
@@ -285,14 +241,4 @@ public class GameScreen implements Screen {
 
     @Override
     public void resume() {}
-
-    @Override
-    public void dispose() {
-        shapeRenderer.dispose();
-        if (laserSound != null) {
-            laserSound.dispose();
-        }
-        batch.dispose();
-        font.dispose();
-    }
 }

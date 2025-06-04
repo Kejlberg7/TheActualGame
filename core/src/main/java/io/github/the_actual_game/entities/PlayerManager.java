@@ -2,16 +2,17 @@ package io.github.the_actual_game.entities;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.constants.LevelConfig;
+import io.github.the_actual_game.utils.ModelManager;
 
 public class PlayerManager {
-    private Rectangle player;
-    private Array<Rectangle> bullets;
+    private Model3D player;
+    private Array<Model3D> bullets;
     private int lives;
     private float invulnerabilityTimer;
     private static final float INVULNERABILITY_DURATION = 2.0f; // 2 seconds of invulnerability after being hit
@@ -21,12 +22,16 @@ public class PlayerManager {
     private int currentShotCount;
 
     public PlayerManager() {
-        player = new Rectangle();
-        player.width = GameConstants.PLAYER_WIDTH;
-        player.height = GameConstants.PLAYER_HEIGHT;
-        player.x = GameConstants.SCREEN_WIDTH/2 - player.width/2;
-        player.y = GameConstants.PLAYER_INITIAL_Y;
-        bullets = new Array<Rectangle>();
+        // Create player model
+        player = new Model3D(
+            ModelManager.getInstance().getModel("models/player.g3db"),
+            GameConstants.SCREEN_WIDTH/2,
+            GameConstants.PLAYER_INITIAL_Y,
+            0,
+            1.0f
+        );
+        
+        bullets = new Array<>();
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
         currentShootingInterval = GameConstants.DEFAULT_SHOOTING_INTERVAL;
@@ -49,24 +54,33 @@ public class PlayerManager {
         }
 
         // Handle player movement
+        Vector3 movement = new Vector3();
         if (Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
-            player.x -= GameConstants.PLAYER_SPEED * delta;
+            movement.x = -GameConstants.PLAYER_SPEED * delta;
         }
         if (Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
-            player.x += GameConstants.PLAYER_SPEED * delta;
+            movement.x = GameConstants.PLAYER_SPEED * delta;
         }
-
-        // Keep player within screen bounds
-        if (player.x < 0) player.x = 0;
-        if (player.x > GameConstants.SCREEN_WIDTH - player.width) {
-            player.x = GameConstants.SCREEN_WIDTH - player.width;
+        
+        // Apply movement with screen bounds check
+        Vector3 newPos = player.getPosition().cpy().add(movement);
+        float playerWidth = player.getDimensions().x;
+        float margin = 5f; // Add a small margin to keep player fully visible
+        
+        // Keep player within screen bounds with margin
+        if (newPos.x < margin) {
+            newPos.x = margin;
+        } else if (newPos.x > GameConstants.SCREEN_WIDTH - playerWidth - margin) {
+            newPos.x = GameConstants.SCREEN_WIDTH - playerWidth - margin;
         }
+        
+        player.setPosition(newPos.x, newPos.y, newPos.z);
 
         // Update bullets
         for (int i = bullets.size - 1; i >= 0; i--) {
-            Rectangle bullet = bullets.get(i);
-            bullet.y += currentLevelConfig.getBulletSpeed() * delta;
-            if (bullet.y > GameConstants.SCREEN_HEIGHT) {
+            Model3D bullet = bullets.get(i);
+            bullet.translate(0, currentLevelConfig.getBulletSpeed() * delta, 0);
+            if (bullet.getPosition().y > GameConstants.SCREEN_HEIGHT) {
                 bullets.removeIndex(i);
             }
         }
@@ -81,20 +95,25 @@ public class PlayerManager {
 
     private void shoot() {
         float totalWidth = (currentShotCount - 1) * GameConstants.MULTI_SHOT_SPREAD;
-        float startX = player.x + player.width / 2 - totalWidth / 2;
+        float startX = player.getPosition().x + player.getDimensions().x / 2 - totalWidth / 2;
 
         for (int i = 0; i < currentShotCount; i++) {
-            Rectangle bullet = new Rectangle();
-            bullet.width = GameConstants.BULLET_WIDTH;
-            bullet.height = GameConstants.BULLET_HEIGHT;
-            bullet.x = startX + (i * GameConstants.MULTI_SHOT_SPREAD);
-            bullet.y = player.y + player.height;
+            Model3D bullet = new Model3D(
+                ModelManager.getInstance().getModel("models/bullet.g3db"),
+                startX + (i * GameConstants.MULTI_SHOT_SPREAD),
+                player.getPosition().y + player.getDimensions().y,
+                0,
+                0.5f
+            );
             bullets.add(bullet);
         }
+        // Add debug info for shooting
+        System.out.println("Shooting " + currentShotCount + " bullets with interval " + currentShootingInterval);
     }
 
     public void adjustShootingSpeed(int powerLevel) {
-        float adjustment = 0.02f * Math.abs(powerLevel); // Reduced from 0.05f to 0.02f
+        float oldInterval = currentShootingInterval;
+        float adjustment = 0.05f * Math.abs(powerLevel);
         if (powerLevel > 0) {
             // Faster shooting = lower interval
             currentShootingInterval = Math.max(GameConstants.MIN_SHOOTING_INTERVAL, 
@@ -104,18 +123,17 @@ public class PlayerManager {
             currentShootingInterval = Math.min(GameConstants.MAX_SHOOTING_INTERVAL, 
                                            currentShootingInterval + adjustment);
         }
+        System.out.println("Shooting interval changed from " + oldInterval + " to " + currentShootingInterval + 
+                         " (powerLevel: " + powerLevel + ", adjustment: " + adjustment + ")");
     }
 
     public void adjustShotCount(int powerLevel) {
-        // Make shot count changes more gradual
         if (powerLevel > 0) {
-            // Only add a shot if we accumulate enough positive power
-            if (powerLevel >= 3) {
-                currentShotCount = Math.min(currentShotCount + 1, GameConstants.MAX_SHOT_COUNT);
-            }
+            // Add one shot
+            currentShotCount = Math.min(currentShotCount + 1, GameConstants.MAX_SHOT_COUNT);
         } else {
-            // Remove shots more aggressively for negative gates
-            currentShotCount = Math.max(currentShotCount + (powerLevel / 2), GameConstants.MIN_SHOT_COUNT);
+            // Remove one shot
+            currentShotCount = Math.max(currentShotCount - 1, GameConstants.MIN_SHOT_COUNT);
         }
     }
 
@@ -124,47 +142,63 @@ public class PlayerManager {
         return shootingTimer == 0;
     }
 
-    public void render(ShapeRenderer shapeRenderer) {
-        // Draw player with blinking effect when invulnerable
+    public void render(ModelBatch modelBatch, Environment environment) {
+        // Render player (with blinking effect when invulnerable)
         if (invulnerabilityTimer <= 0 || (int)(invulnerabilityTimer * 10) % 2 == 0) {
-            shapeRenderer.setColor(Color.BLUE);
-            shapeRenderer.rect(player.x, player.y, player.width, player.height);
+            modelBatch.render(player.getModelInstance(), environment);
         }
 
-        // Draw bullets in purple
-        shapeRenderer.setColor(new Color(0.8f, 0f, 1f, 1f)); // Bright purple color
-        for (Rectangle bullet : bullets) {
-            shapeRenderer.rect(bullet.x, bullet.y, bullet.width, bullet.height);
-        }
-
-        // Draw life indicators in the top-left corner
-        shapeRenderer.setColor(Color.RED);
-        for (int i = 0; i < lives; i++) {
-            float x = 10 + i * (GameConstants.PLAYER_WIDTH * 0.5f + 5);
-            float y = GameConstants.SCREEN_HEIGHT - 30;
-            shapeRenderer.rect(x, y, GameConstants.PLAYER_WIDTH * 0.5f, GameConstants.PLAYER_HEIGHT * 0.5f);
-        }
-
-        // Draw shot count indicator in the top-right corner
-        shapeRenderer.setColor(new Color(0.8f, 0f, 1f, 1f)); // Match bullet color
-        for (int i = 0; i < currentShotCount; i++) {
-            float x = GameConstants.SCREEN_WIDTH - 30 - i * (GameConstants.BULLET_WIDTH + 5);
-            float y = GameConstants.SCREEN_HEIGHT - 30;
-            shapeRenderer.rect(x, y, GameConstants.BULLET_WIDTH, GameConstants.BULLET_HEIGHT);
+        // Render bullets
+        for (Model3D bullet : bullets) {
+            modelBatch.render(bullet.getModelInstance(), environment);
         }
     }
 
-    public Rectangle getPlayer() {
+    public void checkCollisions(Array<Enemy> enemies, Array<Gate> gates) {
+        // Check enemy collisions
+        for (Enemy enemy : enemies) {
+            if (!enemy.isAlive()) continue;
+            
+            if (enemy.getModel().collidesWith(player)) {
+                if (!isInvulnerable()) {
+                    hit();
+                }
+            }
+            
+            // Check if enemy has passed the player
+            if (enemy.getModel().getPosition().y + enemy.getModel().getDimensions().y < player.getPosition().y) {
+                hit();
+            }
+        }
+
+        // Check gate collisions
+        for (Gate gate : gates) {
+            if (!gate.isUsed() && gate.getModel().collidesWith(player)) {
+                int powerLevel = gate.getPowerLevel();
+                if (gate.getType() == Gate.GateType.SPEED) {
+                    adjustShootingSpeed(powerLevel);
+                } else {
+                    adjustShotCount(powerLevel);
+                }
+                gate.setUsed();
+            }
+        }
+    }
+
+    public Model3D getPlayer() {
         return player;
     }
 
-    public Array<Rectangle> getBullets() {
+    public Array<Model3D> getBullets() {
         return bullets;
     }
 
     public void reset() {
-        player.x = GameConstants.SCREEN_WIDTH/2 - player.width/2;
-        player.y = GameConstants.PLAYER_INITIAL_Y;
+        player.setPosition(
+            GameConstants.SCREEN_WIDTH/2 - player.getDimensions().x/2,
+            GameConstants.PLAYER_INITIAL_Y,
+            0
+        );
         bullets.clear();
         lives = GameConstants.PLAYER_DEFAULT_LIFE;
         invulnerabilityTimer = 0;
@@ -191,5 +225,14 @@ public class PlayerManager {
 
     public int getLives() {
         return lives;
+    }
+
+    public void dispose() {
+        if (player != null) {
+            player.dispose();
+        }
+        for (Model3D bullet : bullets) {
+            bullet.dispose();
+        }
     }
 }

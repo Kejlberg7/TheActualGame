@@ -1,11 +1,8 @@
 package io.github.the_actual_game.entities;
 
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Rectangle;
 import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.constants.LevelConfig;
 
@@ -13,51 +10,43 @@ public class GateManager {
     private Array<Gate> gates;
     private float spawnTimer;
     private LevelConfig currentLevelConfig;
-    private static final float GATE_HEIGHT = 4;  // Make gates thin lines
+    private static final float SPAWN_CHANCE = 0.5f; // Increased to 50% chance to spawn gates
+    private static final float MIN_SPAWN_INTERVAL = 2.0f; // Minimum time between spawn attempts
 
     public GateManager() {
-        gates = new Array<Gate>();
-        spawnTimer = 0;
-        setLevel(0); // Start at level 1 (index 0)
+        gates = new Array<>();
+        spawnTimer = MIN_SPAWN_INTERVAL; // Start with a delay
+        setLevel(0);
     }
 
     public void setLevel(int level) {
-        // Ensure level is within bounds
         if (level < 0) level = 0;
         if (level >= GameConstants.MAX_LEVELS) level = GameConstants.MAX_LEVELS - 1;
         
         currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
         gates.clear();
-        spawnTimer = 0;
+        spawnTimer = MIN_SPAWN_INTERVAL;
     }
 
-    public void update(float delta, Array<Rectangle> bullets) {
+    public void update(float delta) {
         spawnTimer += delta;
-        if (spawnTimer >= currentLevelConfig.getGateSpawnInterval()) {
-            spawnGatePair();
-            spawnTimer = 0;
-        }
-
-        // Check bullet collisions with gates
-        for (Gate gate : gates) {
-            if (!gate.isUsed()) {
-                for (Rectangle bullet : bullets) {
-                    if (bullet.overlaps(gate.rect)) {
-                        gate.hit(); // Improve gate's power level
-                        // Removed bullet removal to allow pass-through
-                    }
-                }
+        
+        // Try to spawn gates when enough time has passed
+        if (spawnTimer >= MIN_SPAWN_INTERVAL) {
+            if (Math.random() < SPAWN_CHANCE) {
+                spawnGatePair();
             }
+            spawnTimer = 0;
         }
 
         // Update and remove gates
         for (int i = gates.size - 1; i >= 0; i--) {
             Gate gate = gates.get(i);
-            gate.rect.y -= currentLevelConfig.getGateSpeed() * delta;
-            gate.update(delta); // Update rotation
+            gate.update(delta);
             
             // Remove gates that are off screen or used
-            if (gate.rect.y + gate.rect.height < 0 || gate.isUsed()) {
+            if (gate.getModel().getPosition().y < 0 || gate.isUsed()) {
+                gate.dispose();
                 gates.removeIndex(i);
             }
         }
@@ -65,18 +54,30 @@ public class GateManager {
 
     private void spawnGatePair() {
         float halfScreenWidth = GameConstants.SCREEN_WIDTH / 2;
-        boolean leftIsPositive = MathUtils.randomBoolean();
+        boolean leftIsPositive = Math.random() < 0.5;
         
-        // Left gate
-        gates.add(new Gate(0, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, leftIsPositive));
+        // Left gate - centered in left pane
+        gates.add(new Gate(
+            halfScreenWidth/2 - GameConstants.GATE_WIDTH/2,  // Center in left pane
+            GameConstants.SCREEN_HEIGHT,
+            GameConstants.GATE_WIDTH,
+            GameConstants.GATE_HEIGHT,
+            leftIsPositive
+        ));
         
-        // Right gate (opposite of left gate)
-        gates.add(new Gate(halfScreenWidth, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, !leftIsPositive));
+        // Right gate - centered in right pane
+        gates.add(new Gate(
+            halfScreenWidth + halfScreenWidth/2 - GameConstants.GATE_WIDTH/2,  // Center in right pane
+            GameConstants.SCREEN_HEIGHT,
+            GameConstants.GATE_WIDTH,
+            GameConstants.GATE_HEIGHT,
+            !leftIsPositive
+        ));
     }
 
-    public void render(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont font) {
+    public void render(ModelBatch modelBatch, Environment environment) {
         for (Gate gate : gates) {
-            gate.render(shapeRenderer, batch, font);
+            gate.render(modelBatch, environment);
         }
     }
 
@@ -85,6 +86,18 @@ public class GateManager {
     }
 
     public void reset() {
+        // Clean up existing gates
+        for (Gate gate : gates) {
+            gate.dispose();
+        }
+        gates.clear();
+        spawnTimer = MIN_SPAWN_INTERVAL;
         setLevel(0);
+    }
+
+    public void dispose() {
+        for (Gate gate : gates) {
+            gate.dispose();
+        }
     }
 }

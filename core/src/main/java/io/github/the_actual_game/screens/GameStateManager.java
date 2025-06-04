@@ -32,17 +32,21 @@ public class GameStateManager {
     }
 
     public void setGameOver(boolean value) {
+        System.out.println("Setting game over to: " + value);
         this.gameOver = value;
+        if (value) {
+            gameState = GameState.RESULT;
+        } else {
+            gameState = GameState.PLAYING;
+        }
     }
 
     public void setEnterName() {
         this.gameState = GameState.ENTER_NAME;
-        this.gameOver = false;
     }
 
     public void setResult() {
         this.gameState = GameState.RESULT;
-        this.gameOver = false;
     }
 
     public void setLevelComplete() {
@@ -50,11 +54,13 @@ public class GameStateManager {
     }
 
     public void nextLevel() {
+        System.out.println("GameStateManager nextLevel called");
         currentLevel++;
         if (currentLevel >= GameConstants.MAX_LEVELS) {
             setResult();
         } else {
             this.gameState = GameState.PLAYING;
+            this.gameOver = false;
         }
     }
 
@@ -63,26 +69,19 @@ public class GameStateManager {
     }
 
     public void reset() {
+        System.out.println("GameStateManager reset called");
         this.gameState = GameState.PLAYING;
         this.gameOver = false;
         this.currentLevel = 0;
     }
 
-    public static boolean areAllEnemiesDead(io.github.the_actual_game.entities.EnemyManager enemyManager) {
-        return enemyManager.isLevelComplete();
+    public static int loadHighScore(String filename) {
+        // TODO: Implement high score loading
+        return 0;
     }
 
-    public static int loadHighScore(String scoreFile) {
-        java.io.File file = new java.io.File(scoreFile);
-        if (!file.exists()) return 0;
-        try (java.util.Scanner scanner = new java.util.Scanner(file)) {
-            if (scanner.hasNextInt()) {
-                return scanner.nextInt();
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return 0;
+    public static boolean areAllEnemiesDead(io.github.the_actual_game.entities.EnemyManager enemyManager) {
+        return enemyManager.isLevelComplete();
     }
 
     public static void saveHighScore(String scoreFile, int score) {

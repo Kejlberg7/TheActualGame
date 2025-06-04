@@ -1,116 +1,155 @@
 package io.github.the_actual_game.entities;
 
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.Array;
 import io.github.the_actual_game.constants.GameConstants;
 import io.github.the_actual_game.constants.LevelConfig;
-import io.github.the_actual_game.entities.Enemy;
-import com.badlogic.gdx.math.MathUtils;
 
 public class EnemyManager {
     private Array<Enemy> enemies;
     private LevelConfig currentLevelConfig;
     private int remainingEnemies;
     private int currentLevel;
-    private boolean bossSpawned;
     private float spawnTimer;
-    private static final float MIN_SPAWN_INTERVAL = 2.5f;
-    private static final float MAX_SPAWN_INTERVAL = 6.0f;
+    private boolean initialized = false;
+    private static final float SPAWN_INTERVAL = 4.0f; // Increased from 3.0f to 4.0f seconds
 
     public EnemyManager() {
-        enemies = new Array<Enemy>();
-        setLevel(0); // Start at level 1 (index 0)
+        System.out.println("EnemyManager constructor called");
+        enemies = new Array<>();
+        spawnTimer = SPAWN_INTERVAL;
+        if (!initialized) {
+            setLevel(0);
+            initialized = true;
+        }
+    }
+
+    public void reset() {
+        System.out.println("EnemyManager reset called");
+        // Clean up existing enemies
+        for (Enemy enemy : enemies) {
+            enemy.dispose();
+        }
+        enemies.clear();
+        
+        // Reset state
+        spawnTimer = SPAWN_INTERVAL;
+        setLevel(0);
     }
 
     public void setLevel(int level) {
-        // Ensure level is within bounds
+        System.out.println("EnemyManager setLevel called with level: " + level);
+        
+        // Clean up any existing enemies first
+        for (Enemy enemy : enemies) {
+            enemy.dispose();
+        }
+        enemies.clear();
+        
         if (level < 0) level = 0;
         if (level >= GameConstants.MAX_LEVELS) level = GameConstants.MAX_LEVELS - 1;
         
         currentLevel = level;
         currentLevelConfig = GameConstants.LEVEL_CONFIGS[level];
-        remainingEnemies = currentLevelConfig.getEnemyCount();
-        enemies.clear();
-        bossSpawned = false;
-        spawnTimer = 0;
-        // Spawn first enemy immediately
-        spawnNewEnemy();
-    }
-
-    private void spawnInitialEnemies() {
-        // No longer needed as we spawn enemies gradually
-    }
-
-    private void spawnNewEnemy() {
-        if (remainingEnemies <= 0) return;
+        remainingEnemies = currentLevelConfig.getEnemyCount() - 1; // Subtract 1 for initial spawn
         
-        // Generate a random x position within screen bounds
-        float minX = GameConstants.ENEMY_WIDTH;
-        float maxX = GameConstants.SCREEN_WIDTH - GameConstants.ENEMY_WIDTH;
-        float x = MathUtils.random(minX, maxX);
-        float y = GameConstants.SCREEN_HEIGHT; // Start at the top of the screen
-        
-        if (!bossSpawned && remainingEnemies == 1) {
-            // Spawn boss as the last enemy
-            x = GameConstants.SCREEN_WIDTH / 2 - (GameConstants.ENEMY_WIDTH * 2); // Center the boss
-            enemies.add(new BossEnemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
-                                    currentLevelConfig.getEnemyLife()));
-            bossSpawned = true;
-        } else {
-            enemies.add(new Enemy(x, y, GameConstants.ENEMY_WIDTH, GameConstants.ENEMY_HEIGHT, 
-                                currentLevelConfig.getEnemyLife()));
-        }
-        remainingEnemies--;
+        // Spawn exactly one enemy
+        System.out.println("Spawning initial enemy");
+        Enemy enemy = new Enemy(
+            GameConstants.SCREEN_WIDTH/2,
+            GameConstants.ENEMY_INITIAL_Y,
+            GameConstants.ENEMY_WIDTH,
+            GameConstants.ENEMY_HEIGHT,
+            currentLevelConfig.getEnemyLife()
+        );
+        enemies.add(enemy);
     }
 
-    public void update(float delta, Rectangle player) {
-        // Update spawn timer
+    private void spawnEnemy() {
+        if (remainingEnemies < 0) return;
+        
+        // Randomly choose which pane to spawn in
+        int pane = (int)(Math.random() * GameConstants.NUMBER_OF_PANES);
+        float paneOffset = pane * GameConstants.PANE_WIDTH;
+        
+        // Random position within the pane, accounting for enemy width
+        float enemyWidth = GameConstants.ENEMY_WIDTH;
+        float minX = paneOffset + enemyWidth/2;
+        float maxX = paneOffset + GameConstants.PANE_WIDTH - enemyWidth/2;
+        float x = minX + (float)(Math.random() * (maxX - minX));
+        
+        // Ensure x is within screen bounds
+        x = Math.max(enemyWidth/2, Math.min(x, GameConstants.SCREEN_WIDTH - enemyWidth/2));
+        
+        Enemy enemy = new Enemy(
+            x,
+            GameConstants.ENEMY_INITIAL_Y,
+            GameConstants.ENEMY_WIDTH,
+            GameConstants.ENEMY_HEIGHT,
+            currentLevelConfig.getEnemyLife()
+        );
+        enemies.add(enemy);
+    }
+
+    public void update(float delta) {
+        // Handle enemy spawning
         spawnTimer += delta;
-        
-        // Randomly spawn new enemies
-        if (remainingEnemies > 0 && spawnTimer >= MathUtils.random(MIN_SPAWN_INTERVAL, MAX_SPAWN_INTERVAL)) {
-            spawnNewEnemy();
+        if (spawnTimer >= SPAWN_INTERVAL && remainingEnemies >= 0) {
+            spawnEnemy();
             spawnTimer = 0;
+            remainingEnemies--; // Only decrement after spawning
         }
 
-        // Remove enemies that are no longer needed
+        // Update enemy positions
+        for (Enemy enemy : enemies) {
+            if (!enemy.isAlive()) continue;
+            
+            // Get current position and calculate new position
+            Vector3 pos = enemy.getModel().getPosition();
+            float newY = pos.y - currentLevelConfig.getEnemySpeed() * delta;
+            
+            // Keep enemy within screen bounds
+            float enemyWidth = enemy.getModel().getDimensions().x;
+            float x = Math.max(enemyWidth/2, Math.min(pos.x, GameConstants.SCREEN_WIDTH - enemyWidth/2));
+            
+            enemy.getModel().setPosition(x, newY, pos.z);
+        }
+
+        // Remove enemies that are off screen
         for (int i = enemies.size - 1; i >= 0; i--) {
             Enemy enemy = enemies.get(i);
-            if (!enemy.isAlive() || enemy.rect.y + enemy.rect.height < 0) {
+            if (!enemy.isAlive() || enemy.getModel().getPosition().y < 0) {
+                enemy.dispose();
                 enemies.removeIndex(i);
             }
         }
-
-        // Update remaining enemies
-        for (Enemy enemy : enemies) {
-            if (!enemy.isAlive()) continue;
-            // Move enemy downward using level-specific speed
-            enemy.rect.y -= currentLevelConfig.getEnemySpeed() * delta;
-        }
     }
 
-    public boolean checkCollisions(Rectangle player) {
-        for (Enemy enemy : enemies) {
-            if (!enemy.isAlive()) continue;
-            if (enemy.rect.overlaps(player)) {
-                return true;
+    public int checkBulletCollisions(Array<Model3D> bullets) {
+        int scoreEarned = 0;
+        for (int i = bullets.size - 1; i >= 0; i--) {
+            Model3D bullet = bullets.get(i);
+            for (Enemy enemy : enemies) {
+                if (!enemy.isAlive()) continue;
+                if (enemy.getModel().collidesWith(bullet)) {
+                    enemy.hit(1);
+                    if (!enemy.isAlive()) {
+                        scoreEarned += 10;
+                    }
+                    bullets.removeIndex(i);
+                    break;
+                }
             }
         }
-        return false;
+        return scoreEarned;
     }
 
-    public void render(ShapeRenderer shapeRenderer) {
+    public void render(ModelBatch modelBatch, Environment environment) {
         for (Enemy enemy : enemies) {
-            if (!enemy.isAlive()) continue;
-            shapeRenderer.setColor(enemy.getColor());
-            shapeRenderer.rect(enemy.rect.x, enemy.rect.y, enemy.rect.width, enemy.rect.height);
+            enemy.render(modelBatch, environment);
         }
-    }
-
-    public void reset() {
-        setLevel(0);
     }
 
     public Array<Enemy> getEnemies() {
@@ -122,6 +161,12 @@ public class EnemyManager {
     }
 
     public int getCurrentLevel() {
-        return currentLevel + 1; // Convert from 0-based to 1-based for display
+        return currentLevel + 1;
+    }
+
+    public void dispose() {
+        for (Enemy enemy : enemies) {
+            enemy.dispose();
+        }
     }
 }

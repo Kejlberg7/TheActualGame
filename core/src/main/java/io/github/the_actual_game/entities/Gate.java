@@ -1,135 +1,105 @@
 package io.github.the_actual_game.entities;
 
+import com.badlogic.gdx.graphics.g3d.Environment;
+import com.badlogic.gdx.graphics.g3d.ModelBatch;
+import com.badlogic.gdx.graphics.g3d.attributes.ColorAttribute;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
-import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
-import com.badlogic.gdx.math.MathUtils;
-import com.badlogic.gdx.math.Rectangle;
-import io.github.the_actual_game.utils.FontManager;
-import io.github.the_actual_game.utils.SymbolManager;
-import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import io.github.the_actual_game.utils.ModelManager;
+import io.github.the_actual_game.constants.GameConstants;
 
 public class Gate {
-    public Rectangle rect;
-    private boolean isUsed;
+    public enum GateType { SPEED, SHOTS }
+    
+    private Model3D model;
     private GateType type;
-    private float rotation;
-    private static final float ROTATION_SPEED = 90f; // Degrees per second
-    private int powerLevel; // Negative = bad, Positive = good
-    private static final int MAX_POWER_LEVEL = 5;
-    private static final int MIN_POWER_LEVEL = -5;
-
-    public enum GateType {
-        SPEED,
-        SHOTS
-    }
+    private int powerLevel;
+    private boolean used;
+    private Color color;
+    private float rotationAngle;
+    private static final float ROTATION_SPEED = 90f; // degrees per second
 
     public Gate(float x, float y, float width, float height, boolean isPositive) {
-        this.rect = new Rectangle(x, y, width, height);
-        this.isUsed = false;
+        this.model = new Model3D(
+            ModelManager.getInstance().getModel("models/gate.g3db"),
+            x, y, 0,
+            1.0f
+        );
+        
         this.type = Math.random() < 0.5 ? GateType.SPEED : GateType.SHOTS;
-        this.rotation = 0;
-        // Start with either positive or negative power level
         this.powerLevel = isPositive ? 1 : -1;
-    }
-
-    public void hit() {
-        if (!isUsed) {
-            // Increment or decrement power level based on current state
-            if (powerLevel < 0) {
-                powerLevel++; // Move towards positive
-            } else {
-                powerLevel++; // Increase positive power
-            }
-            
-            // Clamp power level
-            if (powerLevel > MAX_POWER_LEVEL) {
-                powerLevel = MAX_POWER_LEVEL;
-            }
-        }
-    }
-
-    public boolean isPositive() {
-        return powerLevel > 0;
+        this.used = false;
+        this.color = new Color();
+        updateColor();
     }
 
     public void update(float delta) {
-        // Update rotation
-        rotation += ROTATION_SPEED * delta;
-        if (rotation >= 360) {
-            rotation -= 360;
+        // Move the gate downward
+        model.translate(0, -GameConstants.GATE_SPEED * delta, 0);
+    }
+
+    public void hit() {
+        if (!used) {
+            if (powerLevel > 0) {
+                powerLevel = Math.min(powerLevel + 1, 5);
+            } else {
+                powerLevel = Math.max(powerLevel - 1, -5);
+            }
+            updateColor();
         }
     }
 
-    public void render(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont defaultFont) {
-        if (!isUsed) {
-            // Draw the line with color based on power level
-            Color gateColor = getGateColor();
-            shapeRenderer.setColor(gateColor);
-            shapeRenderer.rect(rect.x, rect.y, rect.width, rect.height);
-
-            // Draw the rotating symbol above the line
-            batch.begin();
-            TextureRegion symbol = SymbolManager.getSymbol(getSymbolName());
-            float symbolSize = 32;
-            
-            // Calculate center position for rotation
-            float centerX = rect.x + (rect.width - symbolSize) / 2;
-            float centerY = rect.y + 30;
-            
-            // Draw with rotation around center
-            batch.draw(symbol,
-                      centerX, centerY,
-                      symbolSize/2, symbolSize/2,
-                      symbolSize, symbolSize,
-                      1, 1,
-                      rotation);
-
-            // Draw power level
-            String powerText = String.valueOf(Math.abs(powerLevel));
-            float textWidth = defaultFont.draw(batch, powerText, 0, 0).width;
-            defaultFont.draw(batch, powerText,
-                     centerX + (symbolSize - textWidth) / 2,
-                     centerY - 10);
-            
-            batch.end();
-        }
-    }
-
-    private Color getGateColor() {
-        if (powerLevel > 0) {
-            // Transition from white to green for positive
-            float intensity = powerLevel / (float)MAX_POWER_LEVEL;
-            return new Color(1 - intensity, 1, 1 - intensity, 1);
-        } else {
-            // Transition from white to red for negative
-            float intensity = Math.abs(powerLevel) / (float)Math.abs(MIN_POWER_LEVEL);
-            return new Color(1, 1 - intensity, 1 - intensity, 1);
-        }
-    }
-
-    private String getSymbolName() {
+    private void updateColor() {
+        // Set color based on type and power level
+        float intensity = Math.min(Math.abs(powerLevel) / 5f, 1f);
         if (type == GateType.SPEED) {
-            return isPositive() ? "speed_up" : "speed_down";
+            if (powerLevel > 0) {
+                color.set(0, intensity, 0, 1); // Green for speed up
+            } else {
+                color.set(intensity, 0, 0, 1); // Red for slow down
+            }
         } else {
-            return isPositive() ? "shots_up" : "shots_down";
+            if (powerLevel > 0) {
+                color.set(0, 0, intensity, 1); // Blue for more shots
+            } else {
+                color.set(intensity, intensity, 0, 1); // Yellow for fewer shots
+            }
         }
+        
+        // Update model color
+        model.getModelInstance().materials.first()
+            .set(ColorAttribute.createDiffuse(color));
+    }
+
+    public void render(ModelBatch modelBatch, Environment environment) {
+        if (!used) {
+            modelBatch.render(model.getModelInstance(), environment);
+        }
+    }
+
+    public Model3D getModel() {
+        return model;
     }
 
     public GateType getType() {
         return type;
     }
 
+    public int getPowerLevel() {
+        return powerLevel;
+    }
+
     public boolean isUsed() {
-        return isUsed;
+        return used;
     }
 
     public void setUsed() {
-        this.isUsed = true;
+        this.used = true;
+        System.out.println("Gate used: type=" + type + ", powerLevel=" + powerLevel);
     }
 
-    public int getPowerLevel() {
-        return powerLevel;
+    public void dispose() {
+        if (model != null) {
+            model.dispose();
+        }
     }
 }
