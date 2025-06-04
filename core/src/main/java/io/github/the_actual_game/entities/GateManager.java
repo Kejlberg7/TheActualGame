@@ -54,6 +54,7 @@ public class GateManager {
         for (int i = gates.size - 1; i >= 0; i--) {
             Gate gate = gates.get(i);
             gate.rect.y -= currentLevelConfig.getGateSpeed() * delta;
+            gate.update(delta); // Update rotation
             
             // Remove gates that are off screen or used
             if (gate.rect.y + gate.rect.height < 0 || gate.isUsed()) {
@@ -64,15 +65,13 @@ public class GateManager {
 
     private void spawnGatePair() {
         float halfScreenWidth = GameConstants.SCREEN_WIDTH / 2;
-        
-        // Get current level (0-based, so add 1)
-        int currentLevel = currentLevelConfig.getLevel();
+        boolean leftIsPositive = MathUtils.randomBoolean();
         
         // Left gate
-        gates.add(new Gate(0, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, currentLevel));
+        gates.add(new Gate(0, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, leftIsPositive));
         
-        // Right gate
-        gates.add(new Gate(halfScreenWidth, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, currentLevel));
+        // Right gate (opposite of left gate)
+        gates.add(new Gate(halfScreenWidth, GameConstants.SCREEN_HEIGHT, halfScreenWidth, GATE_HEIGHT, !leftIsPositive));
     }
 
     public void render(ShapeRenderer shapeRenderer, SpriteBatch batch, BitmapFont font) {

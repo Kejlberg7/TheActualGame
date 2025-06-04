@@ -131,8 +131,8 @@ public class PlayerManager {
             shapeRenderer.rect(player.x, player.y, player.width, player.height);
         }
 
-        // Draw bullets
-        shapeRenderer.setColor(Color.YELLOW);
+        // Draw bullets in purple
+        shapeRenderer.setColor(new Color(0.8f, 0f, 1f, 1f)); // Bright purple color
         for (Rectangle bullet : bullets) {
             shapeRenderer.rect(bullet.x, bullet.y, bullet.width, bullet.height);
         }
@@ -146,7 +146,7 @@ public class PlayerManager {
         }
 
         // Draw shot count indicator in the top-right corner
-        shapeRenderer.setColor(Color.YELLOW);
+        shapeRenderer.setColor(new Color(0.8f, 0f, 1f, 1f)); // Match bullet color
         for (int i = 0; i < currentShotCount; i++) {
             float x = GameConstants.SCREEN_WIDTH - 30 - i * (GameConstants.BULLET_WIDTH + 5);
             float y = GameConstants.SCREEN_HEIGHT - 30;
